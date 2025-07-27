@@ -1,0 +1,156 @@
+import matplotlib.pyplot as plt
+
+
+import numpy as np
+import scipy as sp
+import propagation
+from cosmology import *
+
+e0s = np.logspace(18, 20.5)
+ceiling = 1e22
+
+zs = zs = np.linspace(0, 0.4, 401)[1:] # HMMMMMMMMMMMMM
+ds = z2dprop(zs) # HMMMMMMMMMMMMMMMM
+
+cumspec_nuc = []
+cumspec_pro = []
+cumspec_pro2 = []
+
+cumspec_iron = []
+cumspec_sil = []
+cumspec_cno = []
+
+cumspec_nuc2 = []
+cumspec_iron2 = []
+cumspec_sil2 = []
+cumspec_cno2 = []
+
+mpc_in_km = 3.086e19
+model = -2
+
+import tqdm
+for e0 in tqdm.tqdm(e0s):
+    # cumspec_nuc.append(
+    #     sp.integrate.cumulative_trapezoid(
+    #         propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, model, 0),
+    #         ds
+    #     )[-1] / mpc_in_km ** 2 / (4 * np.pi)
+    # )
+    cumspec_nuc2.append(
+        sp.integrate.cumulative_trapezoid(
+            propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, model, 0, FUCKYOU=True),
+            ds
+        )[-1] / mpc_in_km ** 2 / (4 * np.pi)
+    )
+    # cumspec_iron.append(
+    #     sp.integrate.cumulative_trapezoid(
+    #         propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, model, 0, lowa=38.5, higha=56),
+    #         ds
+    #     )[-1] / mpc_in_km ** 2 / (4 * np.pi)
+    # )
+    # cumspec_sil.append(
+    #     sp.integrate.cumulative_trapezoid(
+    #         propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, model, 0, lowa=23.5, higha=38.5),
+    #         ds
+    #     )[-1] / mpc_in_km ** 2 / (4 * np.pi)
+    # )
+    # cumspec_cno.append(
+    #     sp.integrate.cumulative_trapezoid(
+    #         propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, model, 0, lowa=5.5, higha=23.5),
+    #         ds
+    #     )[-1] / mpc_in_km ** 2 / (4 * np.pi)
+    # )
+    cumspec_iron2.append(
+        sp.integrate.cumulative_trapezoid(
+            propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, model, 0, FUCKYOU=True, lowa=38.5, higha=56),
+            ds
+        )[-1] / mpc_in_km ** 2 / (4 * np.pi)
+    )
+    cumspec_sil2.append(
+        sp.integrate.cumulative_trapezoid(
+            propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, model, 0, FUCKYOU=True, lowa=23.5, higha=38.5),
+            ds
+        )[-1] / mpc_in_km ** 2 / (4 * np.pi)
+    )
+    cumspec_cno2.append(
+        sp.integrate.cumulative_trapezoid(
+            propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, model, 0, FUCKYOU=True, lowa=5.5, higha=23.5),
+            ds
+        )[-1] / mpc_in_km ** 2 / (4 * np.pi)
+    )
+    # cumspec_pro.append(
+    #     sp.integrate.cumulative_trapezoid(
+    #         propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, 0, 0),
+    #         ds
+    #     )[-1] / mpc_in_km ** 2 / (4 * np.pi)
+    # )
+    cumspec_pro2.append(
+        sp.integrate.cumulative_trapezoid(
+            propagation.calc_cosmic_ray_rate_density_bonus(e0, ceiling + 1e23, zs),
+            ds
+        )[-1] / mpc_in_km ** 2 / (4 * np.pi)
+    )
+
+    # cumspec_nuc2.append(propagation.integrate_spectrum(e0, -2, 1, 56) / mpc_in_km ** 2 / (4 * np.pi))
+    # cumspec_iron.append(propagation.integrate_spectrum(e0, -2, 38.5, 56) / mpc_in_km ** 2 / (4 * np.pi))
+    # cumspec_sil.append(propagation.integrate_spectrum(e0, -2, 23.5, 38.5) / mpc_in_km ** 2 / (4 * np.pi))
+    # cumspec_cno.append(propagation.integrate_spectrum(e0, -2, 5.5, 23.5) / mpc_in_km ** 2 / (4 * np.pi))
+
+# spec_nuc = -np.gradient(np.array(cumspec_nuc), e0s)
+# spec_pro = -np.gradient(np.array(cumspec_pro), e0s)
+spec_pro2 = -np.gradient(np.array(cumspec_pro2), e0s)
+spec_nuc2 = -np.gradient(np.array(cumspec_nuc2), e0s)
+# spec_iron = -np.gradient(np.array(cumspec_iron), e0s)
+# spec_sil = -np.gradient(np.array(cumspec_sil), e0s)
+# spec_cno = -np.gradient(np.array(cumspec_cno), e0s)
+spec_iron2 = -np.gradient(np.array(cumspec_iron2), e0s)
+spec_sil2 = -np.gradient(np.array(cumspec_sil2), e0s)
+spec_cno2 = -np.gradient(np.array(cumspec_cno2), e0s)
+
+
+plt.xscale("log")
+plt.yscale("log")
+def plot_file_spectrum(filepath):
+    with open(filepath, "r") as f:
+        d = f.read()
+    d = d.splitlines()[4:]
+    # log10E, E*J, Err_up, Err_low
+    # Units: eV, m^-2 s^-1 sr^-1
+    data = [tuple(map(float, dd.split())) for dd in d]
+    log10e, ej, eup, elow = zip(*data)
+    e = 10 ** np.array(log10e)
+
+    # converting to km^-2 yr^-1
+    unit_factor = 1e6 * 31556926
+    unit_factor = 1
+
+    full_ej = ej * e * e * unit_factor
+    full_elow = elow * e * e * unit_factor
+    full_eup = eup * e * e * unit_factor
+
+    plt.errorbar(e, full_ej, [full_elow, full_eup], fmt='o', color='grey', label='Auger spectrum 2019')
+    plt.xlim(1e18, e[-1] * 2)
+    plt.ylim(min(full_ej) / 5, max(full_ej) * 5)
+    return
+
+plot_file_spectrum("auger_2019.txt")
+# plt.plot(e0s, spec_nuc * e0s**3, color='brown')
+# plt.plot(e0s, spec_pro * e0s**3)
+plt.plot(e0s, spec_pro2 * e0s**3 / 1e6 / 31556926)
+plt.plot(e0s, spec_nuc2 * e0s**3 / 1e6 / 31556926, color='brown', linestyle='--')
+# plt.plot(e0s, spec_iron * e0s**3, color='blue')
+# plt.plot(e0s, spec_sil * e0s**3, color='red')
+# plt.plot(e0s, spec_cno * e0s**3, color='green')
+plt.plot(e0s, spec_iron2 * e0s**3/ 1e6 / 31556926, color='blue', linestyle='--')
+plt.plot(e0s, spec_sil2 * e0s**3/ 1e6 / 31556926, color='red', linestyle='--')
+plt.plot(e0s, spec_cno2 * e0s**3/ 1e6 / 31556926, color='green', linestyle='--')
+
+plt.grid(True, which="both", ls=":", color='0.65')
+
+plt.legend()
+plt.show()
+
+
+plt.plot([1,2,3],[1,2,3])
+plt.show()
+

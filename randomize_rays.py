@@ -204,11 +204,11 @@ def randomize_and_save(b, zs, at, source_model, source_profile, rng, save_path, 
 
     b = np.outer(np.mean(b, axis=1), np.ones(len(at)))
 
-    mf = analysis.BigMatchedFilterTest(create_average_map(b, sum(dndrs[4:]), zs, at, source_profile))
-    mf.save(f"cr_output/patterns/mf_{name}_e6_nuc")
-    mf = analysis.BigMatchedFilterTest(create_average_map(b, sum(dndrs_pro[4:]), zs, at, source_profile))
-    mf.save(f"cr_output/patterns/mf_{name}_e6_pro")
-    return
+    # mf = analysis.BigMatchedFilterTest(create_average_map(b, sum(dndrs[4:]), zs, at, source_profile))
+    # mf.save(f"cr_output/patterns/mf_{name}_e6_nuc")
+    # mf = analysis.BigMatchedFilterTest(create_average_map(b, sum(dndrs_pro[4:]), zs, at, source_profile))
+    # mf.save(f"cr_output/patterns/mf_{name}_e6_pro")
+    # return
 
     for i in tqdm.tqdm(range(10000)):
         sources = create_random_source_map(b, zs, source_profile, rng)
@@ -236,7 +236,6 @@ def randomize_and_save(b, zs, at, source_model, source_profile, rng, save_path, 
 # --- MAIN ---
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--catalog-path", "-c", help="path for catalog", default="/home/nimrod/physics/uhecr/biteau/table5.dat")
     parser.add_argument("--nside", "-n", help="nside for the healpix map", default=NSIDE)
     parser.add_argument("--source-model", "-s", help="model name for source emission", type=int, default=SOURCE_MODEL)
     parser.add_argument("--exposure", "-e", choices=['isotropic', 'auger', 'auger10', 'ta', '2022'], help="sky exposure pattern to use (default: isotropic)", default='isotropic')

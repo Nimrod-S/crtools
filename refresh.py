@@ -38,7 +38,7 @@ for e0 in tqdm.tqdm(e0s):
     # )
     cumspec_nuc2.append(
         sp.integrate.cumulative_trapezoid(
-            propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, model, 0, FUCKYOU=True),
+            propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, model),
             ds
         )[-1] / mpc_in_km ** 2 / (4 * np.pi)
     )
@@ -62,19 +62,19 @@ for e0 in tqdm.tqdm(e0s):
     # )
     cumspec_iron2.append(
         sp.integrate.cumulative_trapezoid(
-            propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, model, 0, FUCKYOU=True, lowa=38.5, higha=56),
+            propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, model, lowa=38.5, higha=56),
             ds
         )[-1] / mpc_in_km ** 2 / (4 * np.pi)
     )
     cumspec_sil2.append(
         sp.integrate.cumulative_trapezoid(
-            propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, model, 0, FUCKYOU=True, lowa=23.5, higha=38.5),
+            propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, model, lowa=23.5, higha=38.5),
             ds
         )[-1] / mpc_in_km ** 2 / (4 * np.pi)
     )
     cumspec_cno2.append(
         sp.integrate.cumulative_trapezoid(
-            propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, model, 0, FUCKYOU=True, lowa=5.5, higha=23.5),
+            propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, model, lowa=5.5, higha=23.5),
             ds
         )[-1] / mpc_in_km ** 2 / (4 * np.pi)
     )

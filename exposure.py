@@ -80,10 +80,11 @@ def create_isotropic_exposure_map(nside):
     npix = hp.nside2npix(nside)
     
     # For now, just a constant exposure of 2000 km2, 5 yr
-    area = 20000
+    area = 2000
     time = 5
+    sr = 4 * np.pi
 
-    at = np.ones(npix) * area * time / (4 * np.pi)
+    at = np.ones(npix) * sr * area * time / (4 * np.pi)
 
     # Units: [yr * km2]
     return at

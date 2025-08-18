@@ -127,6 +127,39 @@ def get_ra_dist(data):
     return ra_bins, ra_hits
 
 
+# --- other results ---
+
+def plot_mf(exp, dens, comp, e6=False):
+    if comp == "pvi":
+        top = "pro"
+        bot = "iso"
+    elif comp == "nvi":
+        top = "nuc"
+        bot = "iso"
+    elif comp == "nvp":
+        top = "nuc"
+        bot = "pro"
+    else:
+        return
+    if e6:
+        top += "6"
+        bot += "6"
+    nvt = np.load(f"cr_output/results/mf{top}_{exp}_m-2_s{dens}.npy")
+    nvb = np.load(f"cr_output/results/mf{bot}_{exp}_m-2_s{dens}.npy")
+    pvt = np.load(f"cr_output/results/mf{top}_{exp}_m0_s{dens}.npy")
+    pvb = np.load(f"cr_output/results/mf{bot}_{exp}_m0_s{dens}.npy")
+    ivt = np.load(f"cr_output/results/mf{top}_{exp}_m-2*_s{dens}.npy")
+    ivb = np.load(f"cr_output/results/mf{bot}_{exp}_m-2*_s{dens}.npy")
+
+    nnn = nvt - nvb
+    ppp = pvt - pvb
+    iii = ivt - ivb
+
+    b = np.linspace(min(iii), max(nnn))
+    plt.hist(nnn, bins=b, alpha=.6)
+    plt.hist(ppp, bins=b, alpha=.6)
+    plt.hist(iii, bins=b, alpha=.6)
+
 # --- MAIN ---
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -192,33 +225,27 @@ def main():
 
     # lvr = analysis.LocalVarianceTest1(at)
     # print(f"wow {lvr.test(m)}")
-    sc = analysis.SmallCorrelationTest()
+    sc = analysis.SmallCorrelationTest(12, args.nside)
     print(f"sc: {sc.test_against(m, m2)}")
 
-    lv2 = analysis.LocalVarianceTest2(gmf.deflection_random(4e18) * 180 / np.pi, hp.get_nside(m))
+    lv2 = analysis.LocalVarianceTest(gmf.deflection_random(4e18) * 180 / np.pi, hp.get_nside(m))
     print(f"local variance {lv2.test(m)}")
-    lv2 = analysis.LocalVarianceTest2(20, hp.get_nside(m))
+    lv2 = analysis.LocalVarianceTest(12, hp.get_nside(m))
     print(f"local variance {lv2.test(m)}")
-    lv2 = analysis.LocalVarianceTest2(30, hp.get_nside(m))
+    lv2 = analysis.LocalVarianceTest(20, hp.get_nside(m))
     print(f"local variance {lv2.test(m)}")
-    lv2 = analysis.LocalVarianceTest2(40, hp.get_nside(m))
+    lv2 = analysis.LocalVarianceTest(30, hp.get_nside(m))
+    print(f"local variance {lv2.test(m)}")
+    lv2 = analysis.LocalVarianceTest(40, hp.get_nside(m))
     print(f"local variance {lv2.test(m)}")
 
-    mfnuc = analysis.BigMatchedFilterTest.load("/home/nimrod/physics/uhecr/mf/nuc")
-    mfpro = analysis.BigMatchedFilterTest.load("/home/nimrod/physics/uhecr/mf/pro")
+    mfnuc = analysis.BigMatchedFilterTest.load("cr_output/patterns/mf_auger10_e2_nuc")
+    mfpro = analysis.BigMatchedFilterTest.load("cr_output/patterns/mf_auger10_e2_pro")
+    mfiso = analysis.BigMatchedFilterTest.load("cr_output/patterns/mf_auger10_e2_iso")
     print(f"mf nuc: {mfnuc.test(m)}")
     print(f"mf pro: {mfpro.test(m)}")
+    print(f"mf iso: {mfiso.test(m)}")
 
-    mt = analysis.MatchTest(np.load("tmpavg.npy"), 45)
-    hp.mollview(mt.test(m))
-    mt = analysis.MatchTest(np.load("tmpavg.npy"), 90)
-    hp.mollview(mt.test(m))
-    mt = analysis.MatchTest(np.load("tmpavg.npy"), 20)
-    hp.mollview(mt.test(m))
-
-    out = analysis.OUTest(at, -70, 30, -80, -40, 45)
-    # out = analysis.OUTest(at, -70, 30, -50, -40, 45)
-    print(f"over/underdensity {out.test(m)}")
 
     r = hp.Rotator(rot=(137.37, 0, 83.68))
     hp.mollview(m)

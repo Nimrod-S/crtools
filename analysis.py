@@ -220,12 +220,13 @@ class SmallCorrelationTest:
     
 
 class MultipolesTest:
-    def __init__(self):
-        pass
+    def __init__(self, ang, exposure):
+        self._at = exposure
+        self._angle = ang
 
     def test(self, hitmap):
         # alm = hp.map2alm(hitmap)
-        hitmap2 = hp.sphtfunc.smoothing(hitmap, sigma=20 * np.pi / 180)
+        hitmap2 = hp.sphtfunc.smoothing(hitmap, sigma=self._angle * np.pi / 180)
         cl = hp.anafast(hitmap2)
         
         # if   h = h0 (1 + d cos (theta))
@@ -233,6 +234,17 @@ class MultipolesTest:
         # and  c1 = 4pi * h0^2 d^2 / 9 (this 9 is (2l+1)^2)
         # so   d = 3 * sqrt(c1 / c0)
         return np.array([cl[1] / cl[0], cl[2] / cl[0]])
+
+    def other_test(self, hitmap):
+        hitmap2 = hp.sphtfunc.smoothing(hitmap / self._at, sigma=self._angle * np.pi / 180)
+        # cl = hp.anafast(hitmap2)
+        # return np.array([cl[1] / cl[0], cl[2] / cl[0]])
+
+        al = hp.map2alm(hitmap2, lmax=2)
+        vec = np.array([np.real(al[3]) * np.sqrt(2), np.imag(al[3]) * np.sqrt(2), np.real(al[1])])
+        return vec / np.real(al[0]) * np.sqrt(3)
+        
+
 
     # TODO do something w/ these functions
     def point(mp):

@@ -175,7 +175,7 @@ def save_hitmap(hitmap, source_model, source_profile, idx, name, path):
     s0 = source_profile[0]
     logs0 = int(np.log10(s0))
 
-    full_name = f"cr_{name}_m{gind}*_s{logs0}_{idx}"
+    full_name = f"cr_{name}_m{gind}_s{logs0}*_{idx}"
     full_path = path + "/" + full_name
 
     # Absolutely no way we get more than 10000 rays in one pixel
@@ -202,12 +202,10 @@ def randomize_and_save(b, zs, at, source_model, source_profile, rng, save_path, 
     flux_factors = [fast_flux_factor(zs, source_profile, dndr, at) for dndr in dndrs]
     flux_factors_pro = [fast_flux_factor(zs, source_profile, dndr, at) for dndr in dndrs_pro]
 
-    b = np.outer(np.mean(b, axis=1), np.ones(len(at)))
-
     # mf = analysis.BigMatchedFilterTest(create_average_map(b, sum(dndrs[4:]), zs, at, source_profile))
-    # mf.save(f"cr_output/patterns/mf_{name}_e6_nuc")
+    # mf.save(f"cr_output/patterns/mf_{name}_e2_nuc2")
     # mf = analysis.BigMatchedFilterTest(create_average_map(b, sum(dndrs_pro[4:]), zs, at, source_profile))
-    # mf.save(f"cr_output/patterns/mf_{name}_e6_pro")
+    # mf.save(f"cr_output/patterns/mf_{name}_e2_pro2")
     # return
 
     for i in tqdm.tqdm(range(10000)):
@@ -215,8 +213,8 @@ def randomize_and_save(b, zs, at, source_model, source_profile, rng, save_path, 
         # sources_iso = create_random_source_map(iso_b, zs, source_profile, rng)
 
         for j, dndr in enumerate(dndrs):
-            hitmap = generate_rays_from_sources(sources, dndr, zs, at, source_profile, rng, 0)
-            hitmap_pro = generate_rays_from_sources(sources, dndrs_pro[j], zs, at, source_profile, rng, 0)
+            # hitmap = generate_rays_from_sources(sources, dndr, zs, at, source_profile, rng, 0)
+            # hitmap_pro = generate_rays_from_sources(sources, dndrs_pro[j], zs, at, source_profile, rng, 0)
             # hitmap_iso = generate_rays_from_sources(sources_iso, dndr, zs, at, source_profile, rng, 0)
             # hitmap_iso_pro = generate_rays_from_sources(sources_iso, dndrs_pro[j], zs, at, source_profile, rng, 0)
 
@@ -241,6 +239,7 @@ def parse_args():
     parser.add_argument("--exposure", "-e", choices=['isotropic', 'auger', 'auger10', 'ta', '2022'], help="sky exposure pattern to use (default: isotropic)", default='isotropic')
     parser.add_argument("--source-density", "-sd", help="log10 source density (Mpc^-3)", type=float, default=-2.0)
     parser.add_argument("--source-evolution", "-se", help="source evolution index", type=float, default=0.0)
+    parser.add_argument("--bias", "-b", choices=['neutral', 'high'], help="source distribution bias to 2MRS", default='neutral')
     parser.add_argument("--output-directory", "-o", help="output path to save results in", default=None)
     return parser.parse_args()
 
@@ -251,14 +250,15 @@ def main():
 
     zs = np.linspace(0, 0.4, 401)[1:] # Important: resolution need to be better than the bias map voxel size
 
+    bratio = {"neutral": 1, "high": 2/1.25}[args.bias]
+
     # 200 seems more or less the limit where the avg angular separation under 10 deg
-    b = lss.create_source_bias_map_mrsl("MRS/catalog/2mrs_1175_done.dat", "MRS/CORRECTIONS/nearby.txt", args.nside, zs, 0.5, 200)
+    b = lss.create_source_bias_map_mrsl("MRS/catalog/2mrs_1175_done.dat", "MRS/CORRECTIONS/nearby.txt", args.nside, zs, 0.5, 200, bias_ratio=bratio)
     
     source_profile = (np.power(10, args.source_density), args.source_evolution)
 
     source_model = args.source_model
     at = exposure.create_exposure_map(args.nside, args.exposure)
-
     randomize_and_save(b, zs, at, source_model, source_profile, rng, args.output_directory, args.exposure)
     return
 

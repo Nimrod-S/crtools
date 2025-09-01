@@ -202,7 +202,7 @@ def create_source_bias_map_mrs(catalog_path, correction_path, nside, zs, min_cat
             # We are out, now normalize and start being isotropic:
             if not normalized:
                 normalized = True
-                hpmaps[:i] *= np.sum(4 * np.pi * dls[:i] ** 2) / totalmass # I thought about this a lot and wrote stuff on paper lol
+                hpmaps[:i] *= np.sum(4 * np.pi * dls[:i] ** 2) / totalmass # I thought about this a lot, this is correct
         
             # Just fill with isotropic value
             hpmaps[i] = np.ones(npix)
@@ -211,7 +211,7 @@ def create_source_bias_map_mrs(catalog_path, correction_path, nside, zs, min_cat
     return hpmaps
 
 
-def create_source_bias_map_mrsl(catalog_path, correction_path, nside, zs, min_catalog_dl, max_catalog_dl, fill_plane=True):
+def create_source_bias_map_mrsl(catalog_path, correction_path, nside, zs, min_catalog_dl, max_catalog_dl, fill_plane=True, bias_ratio=1):
     """
     Below min_catalog_dl, assume there is nothing (basically cut out our satellite dwarf galaxies)
     Above max_catalog_dl, assume isotropy
@@ -270,7 +270,10 @@ def create_source_bias_map_mrsl(catalog_path, correction_path, nside, zs, min_ca
             # We are out, now normalize and start being isotropic:
             if not normalized:
                 normalized = True
-                hpmaps[:i] *= np.sum(4 * np.pi * dls[:i] ** 2) / totallum # I thought about this a lot and wrote stuff on paper lol
+                mean_density = totallum / np.sum(4 * np.pi * dls[:i] ** 2) # I thought about this a lot, this is correct
+                hpmaps[:i] = (hpmaps[:i] / mean_density - 1) * bias_ratio + 1
+
+                hpmaps[:i][hpmaps[:i] < 0] = 0
         
             # Just fill with isotropic value
             hpmaps[i] = np.ones(npix)

@@ -139,6 +139,9 @@ def plot_mf(exp, dens, comp, e6=False):
     elif comp == "nvp":
         top = "nuc"
         bot = "pro"
+    elif comp == "2vn":
+        top = "nuc2"
+        bot = "nuc"
     else:
         return
     if e6:
@@ -151,14 +154,27 @@ def plot_mf(exp, dens, comp, e6=False):
     ivt = np.load(f"cr_output/results/mf{top}_{exp}_m-2*_s{dens}.npy")
     ivb = np.load(f"cr_output/results/mf{bot}_{exp}_m-2*_s{dens}.npy")
 
+    bvt = np.load(f"cr_output/results/mf{top}_{exp}_m-2_s{dens}*.npy")
+    bvb = np.load(f"cr_output/results/mf{bot}_{exp}_m-2_s{dens}*.npy")
+    qvt = np.load(f"cr_output/results/mf{top}_{exp}_m0_s{dens}*.npy")
+    qvb = np.load(f"cr_output/results/mf{bot}_{exp}_m0_s{dens}*.npy")
+
+
+
     nnn = nvt - nvb
     ppp = pvt - pvb
     iii = ivt - ivb
 
-    b = np.linspace(min(iii), max(nnn))
-    plt.hist(nnn, bins=b, alpha=.6)
-    plt.hist(ppp, bins=b, alpha=.6)
-    plt.hist(iii, bins=b, alpha=.6)
+    bbb = bvt - bvb
+    qqq = qvt - qvb
+
+    b = np.linspace(min(iii), max(bbb))
+    plt.hist(nnn, bins=b, alpha=.6, label='nuclei, b=1.25')
+    plt.hist(ppp, bins=b, alpha=.6, label='proton, b=1.25')
+    plt.hist(iii, bins=b, alpha=.6, label='nuclei, iso')
+
+    plt.hist(bbb, bins=b, alpha=.6, label='nuclei, b=2')
+    plt.hist(qqq, bins=b, alpha=.6, label='proton, b=2')
 
 # --- MAIN ---
 def parse_args():

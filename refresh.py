@@ -122,7 +122,7 @@ def plot_file_spectrum(filepath):
 
     # converting to km^-2 yr^-1
     unit_factor = 1e6 * 31556926
-    unit_factor = 1
+    # unit_factor = 1
 
     full_ej = ej * e * e * unit_factor
     full_elow = elow * e * e * unit_factor
@@ -136,14 +136,14 @@ def plot_file_spectrum(filepath):
 plot_file_spectrum("auger_2019.txt")
 # plt.plot(e0s, spec_nuc * e0s**3, color='brown')
 # plt.plot(e0s, spec_pro * e0s**3)
-plt.plot(e0s, spec_pro2 * e0s**3 / 1e6 / 31556926)
-plt.plot(e0s, spec_nuc2 * e0s**3 / 1e6 / 31556926, color='brown', linestyle='--')
+plt.plot(e0s, spec_pro2 * e0s**3)
+plt.plot(e0s, spec_nuc2 * e0s**3, color='brown', linestyle='--')
 # plt.plot(e0s, spec_iron * e0s**3, color='blue')
 # plt.plot(e0s, spec_sil * e0s**3, color='red')
 # plt.plot(e0s, spec_cno * e0s**3, color='green')
-plt.plot(e0s, spec_iron2 * e0s**3/ 1e6 / 31556926, color='blue', linestyle='--')
-plt.plot(e0s, spec_sil2 * e0s**3/ 1e6 / 31556926, color='red', linestyle='--')
-plt.plot(e0s, spec_cno2 * e0s**3/ 1e6 / 31556926, color='green', linestyle='--')
+plt.plot(e0s, spec_iron2 * e0s**3, color='blue', linestyle='--')
+plt.plot(e0s, spec_sil2 * e0s**3, color='red', linestyle='--')
+plt.plot(e0s, spec_cno2 * e0s**3, color='green', linestyle='--')
 
 plt.grid(True, which="both", ls=":", color='0.65')
 

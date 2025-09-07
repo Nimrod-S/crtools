@@ -188,6 +188,13 @@ def main():
     at = exposure.create_exposure_map(args.nside, "auger10")
 
     data = parse_auger_summaries(args.summary_path)
+
+    eee = np.linspace(8e18, 2e20, 100)
+    cs = np.array([len(energy_filter(data, e, 2e21)) for e in eee])
+    cde = -np.gradient(cs, eee)
+    plt.loglog(eee, cde * eee**3 *10/ (26300+95700))
+    plt.show()
+
     
     #data = energy_filter(data, 1e17, 2e18)
     
@@ -196,6 +203,15 @@ def main():
     e0s = np.array([1.99526231e+19, 2.51188643e+19, 3.16227766e+19, 3.98107171e+19, 5.01187234e+19, 6.30957344e+19, 7.94328235e+19, 1.00000000e+20, 1.25892541e+20])
     mc = np.array([np.float64(492.1696847513242), np.float64(294.7179125638793), np.float64(158.46287049905817), np.float64(76.33455941464476), np.float64(37.94483494646917), np.float64(17.14897086813731), np.float64(6.410175544002524), np.float64(2.4837950744159345), np.float64(0.8028522554387274)])
     m1 = np.array([np.float64(594.131994734713), np.float64(345.1518678296589), np.float64(180.22902258835677), np.float64(82.17103580525409), np.float64(36.82234618578102), np.float64(16.284561248521555), np.float64(5.752093495295569), np.float64(2.0015459544391074), np.float64(0.6594072282306233)])
+    ma = np.array([548.2373164106018,
+342.65361247469065,
+178.33019855666385,
+75.61569725995668,
+37.42568313101802,
+18.313077148328546,
+6.903333141410186,
+2.885787193327822,
+1.113776293916009])
     mp = np.array([np.float64(437.7342013695336), np.float64(271.4583963172637), np.float64(159.71330801328358), np.float64(85.98524173056822), np.float64(40.60049362887794), np.float64(17.129356245332), np.float64(7.258670933232992), np.float64(2.9952714362746864), np.float64(1.3211015124305718)])
     mp2 = np.array([np.float64(453.85626291541803), np.float64(276.96854637761334), np.float64(160.34950092732188), np.float64(84.88641583751462), np.float64(39.344310215493834), np.float64(16.270395784940366), np.float64(6.720834683801316), np.float64(2.6991319035585835), np.float64(1.1612313426784788)])
 
@@ -222,6 +238,9 @@ def main():
     
     plt.plot(e0s, mp2, color='green', ls='--')
     plt.plot(e0s, m1, color='gray', ls='--')
+
+    plt.plot(e0s, ma, color='gold', ls='--')
+
     plt.scatter(e0s, ns, color='blue')
     plt.show()
 

@@ -1,16 +1,20 @@
 import argparse
 
 import numpy as np
+import scipy as sp
 import matplotlib.pyplot as plt
 
 import propagation
 from cosmology import *
 
+import crpropa
+
+
 IRB_NAME="Gilmore12"
 
 class DataParser:
 
-    INTERESTING_ENERGY_RANGE_eV = (1e18, 1e21)
+    INTERESTING_ENERGY_RANGE_eV = (5e18, 1e21)
 
     def __init__(self, path):
         self._base_path = path
@@ -154,6 +158,7 @@ class DataParser:
         alist.sort()
         alist = np.array(alist)
 
+        raise ValueError("Stuff not implemented")
         popt, pcov = curve_fit(power, np.array(data_a), data_br, bounds=([0, 0.5], [np.inf, 0.51]))
         power_fit = power(alist, popt[0], popt[1])
         print(popt)
@@ -191,11 +196,11 @@ class DataParser:
         # ax.set_xscale("log")
         # ax.set_yscale("log")
         # plt.figure()
-        plt.xlabel("$\gamma$")
-        plt.ylabel("$\lambda$ (Mpc)")
+        
         plt.title(f"A={a}")
         # plt.loglog(gammas, mfp_Mpc, label="real", color='royalblue')
-        plt.loglog(gammas, e_mfp_Mpc, label="real (effective)", color='mediumseagreen')
+        # plt.loglog(gammas, e_mfp_Mpc, label="real (effective)", color='mediumseagreen')
+        plt.loglog(gammas, e_mfp_Mpc, label="real (effective)", color='darkred')
         plt.loglog(gammas, model_mfp_Mpc, label="model", color='gray', linestyle='--')
         # plt.loglog(gammas, e_mfp_Mpc, label=f"A={a}")
         # plt.loglog(gammas, model_mfp_Mpc, linestyle='--', color='gray')
@@ -219,6 +224,8 @@ class DataParser:
         alist = np.array(alist)
         model_mfp_Mpc = propagation.mfp1(alist, g)
 
+        raise ValueError("Stuff not implemented")
+
         popt, pcov = curve_fit(power, np.array(data_a)[3:], data_mfp_Mpc[3:], bounds=([0, -1.1], [np.inf, -1]))
         power_fit = power(alist, popt[0], popt[1])
         print(popt)
@@ -236,6 +243,27 @@ class DataParser:
         return popt[0], popt[1]
 
 
+def plot_contours(e0s, a, color):
+    plt.xscale("log")
+    plt.yscale("log")
+    plt.title(f"A={a}")
+    for i, e0 in enumerate(e0s):
+        e1s = np.geomspace(e0, 5e20)
+        gs = e1s / propagation.MP / a
+        d = propagation.d1(a, gs, e0)
+        d = z2dprop(propagation.deff2z(d))
+        plt.plot(e1s, d, color=color, alpha=1-.7*i/len(e0s), label=f"{int(e0/1e18)} EeV")
+        # plt.text(e1s[3], d[3], f"{int(e0/1e18)}", color=color, alpha=1-.6*i/len(e0s), backgroundcolor='white')
+
+def plot_side_contours(a, color):
+    threshd = np.load(f"thelines{a}.npy")
+    
+    e1s = np.geomspace(2e19, 2e20)
+
+    for i, thresh in enumerate(threshd):
+        plt.plot(e1s, thresh, color=color, alpha=.3+.7*i/len(threshd))
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-directory", "-data", help="path with interaction data", default="./CRPropa3/build/data")
@@ -244,16 +272,50 @@ def parse_args():
 def main():
     args = parse_args()
 
-    DP = DataParser(args.data_directory)
+    plt.subplot(221)
+    plt.ylabel("distance (Mpc)")
+    plot_contours([2e19, 4e19, 6e19, 8e19, 1e20], 56, "darkblue")
+    plot_side_contours(56, "darkred")
 
-    
-    DP.graph_mfp_by_a(56)
-    DP.graph_mfp_by_a(28)
-    DP.graph_mfp_by_a(16)
-    # DP.graph_mfp_by_a(14)
-    DP.graph_mfp_by_a(12)
+    plt.subplot(222)
+    plot_contours([2e19, 4e19, 6e19, 8e19, 1e20], 28, "darkblue")
+    plot_side_contours(28, "darkred")
+
+    plt.subplot(223)
+    plt.xlabel("$E_s$ (eV)")
+    plt.ylabel("distance (Mpc)")
+    plot_contours([2e19, 4e19, 6e19, 8e19, 1e20], 16, "darkblue")
+    plot_side_contours(16, "darkred")
+
+    plt.subplot(224)
+    plt.xlabel("$E_s$ (eV)")
+    plot_contours([2e19, 4e19, 6e19, 8e19, 1e20], 12, "darkblue")
+    plot_side_contours(12, "darkred")
+
     plt.legend()
     plt.show()
+    return
+
+    DP = DataParser(args.data_directory)
+
+    plt.subplot(221)
+
+    plt.ylabel("$\lambda$ (Mpc)")
+    DP.graph_mfp_by_a(56)
+    plt.subplot(222)
+
+    
+    DP.graph_mfp_by_a(28)
+    plt.subplot(223)
+    plt.ylabel("$\lambda$ (Mpc)")
+    plt.xlabel("$\gamma$")
+    DP.graph_mfp_by_a(16)
+    # DP.graph_mfp_by_a(14)
+    plt.subplot(224)
+    plt.xlabel("$\gamma$")
+    DP.graph_mfp_by_a(12)
+    plt.show()
+    return
 
     zs = np.linspace(0, 0.1)
     dprop = z2dprop(zs)

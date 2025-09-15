@@ -90,6 +90,7 @@ for e0 in tqdm.tqdm(e0s):
             ds
         )[-1] / mpc_in_km ** 2 / (4 * np.pi)
     )
+    # cumspec_pro2.append(1)
 
     # cumspec_nuc2.append(propagation.integrate_spectrum(e0, -2, 1, 56) / mpc_in_km ** 2 / (4 * np.pi))
     # cumspec_iron.append(propagation.integrate_spectrum(e0, -2, 38.5, 56) / mpc_in_km ** 2 / (4 * np.pi))
@@ -134,18 +135,24 @@ def plot_file_spectrum(filepath):
     return
 
 plot_file_spectrum("auger_2019.txt")
+
+np.save("prosp", spec_pro2)
+
 # plt.plot(e0s, spec_nuc * e0s**3, color='brown')
 # plt.plot(e0s, spec_pro * e0s**3)
-plt.plot(e0s, spec_pro2 * e0s**3)
-plt.plot(e0s, spec_nuc2 * e0s**3, color='brown', linestyle='--')
+plt.plot(e0s, spec_pro2 * e0s**3, color="red", linestyle=":", label="proton model")
+plt.plot(e0s, spec_nuc2 * e0s**3, color='black', linestyle='-', label="nuclei model (total)")
 # plt.plot(e0s, spec_iron * e0s**3, color='blue')
 # plt.plot(e0s, spec_sil * e0s**3, color='red')
 # plt.plot(e0s, spec_cno * e0s**3, color='green')
-plt.plot(e0s, spec_iron2 * e0s**3, color='blue', linestyle='--')
-plt.plot(e0s, spec_sil2 * e0s**3, color='red', linestyle='--')
-plt.plot(e0s, spec_cno2 * e0s**3, color='green', linestyle='--')
+plt.plot(e0s, spec_iron2 * e0s**3, color='purple', linestyle='-', label="$A_o>38$")
+plt.plot(e0s, spec_sil2 * e0s**3, color='blue', linestyle='-', label="$A_o=24-38$")
+plt.plot(e0s, spec_cno2 * e0s**3, color='green', linestyle='-', label="$A_o=5-23$")
 
 plt.grid(True, which="both", ls=":", color='0.65')
+
+plt.xlabel("$E$ (eV)")
+plt.ylabel(r"$E^3\Phi(E)$ ($\text{yr}^{-1}$ $\text{km}^{-2}$ $\text{sr}^{-1}$ $\text{eV}^2$)")
 
 plt.legend()
 plt.show()

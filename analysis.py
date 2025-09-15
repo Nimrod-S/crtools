@@ -176,6 +176,7 @@ class BigMatchedFilterTest:
             mf._regions.append(loaded[f'arr_{i}'])
         return mf
     
+# Consider: import s2fft
 class SmallCorrelationTest:
     def __init__(self, ang, nside):
         self._mask = zoa_mask(nside)

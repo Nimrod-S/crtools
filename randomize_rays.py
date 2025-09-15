@@ -62,8 +62,9 @@ def create_average_map(source_bias, dndr, zs, exposure, source_profile):
 
     dz = np.gradient(z, axis=0)
 
-    dl = z2dprop(z) * (1+z)
-    dv = sangle * dl ** 2 / (1+z) * dz * C / H0 / sqrtH(z) / (1+z) # TODO dl->da?
+    da = z2dprop(z) / (1+z)
+    dl = da * (1+z)**2
+    dv = sangle * da ** 2 * dz * C / H0 / sqrtH(z) / (1+z)
 
     full_n = np.outer(dndr / s0 * (1+z) / (4 * np.pi * dl ** 2), at) # Mean amount of rays from a single source
     p = full_n # This is intentionally written in a confusing way, to show the similarity to calc_poisson_mean
@@ -104,8 +105,8 @@ def create_random_source_map(source_bias, z, source_profile, rng):
     dz = np.gradient(z, axis=0)
     
     dprop = z2dprop(z)
-    dl = dprop * (1+z)
-    dv = sangle * dl ** 2 / (1+z) * dz * C / H0 / sqrtH(z) / (1+z) # TODO dl->da?
+    da = dprop / (1+z)
+    dv = sangle * da ** 2 * dz * C / H0 / sqrtH(z) / (1+z)
 
     mean_source = source_bias * dv * s0 * (1+z) ** sind
 
@@ -170,12 +171,12 @@ def fast_generate_rays_from_sources(sources, flux_factor, rng):
 
 
 # --- IO ---
-def save_hitmap(hitmap, source_model, source_profile, idx, name, path):
+def save_hitmap(hitmap, source_model, source_profile, bratio, name, idx, path):
     gind = source_model
     s0 = source_profile[0]
     logs0 = int(np.log10(s0))
 
-    full_name = f"cr_{name}_m{gind}_s{logs0}*_{idx}"
+    full_name = f"cr_{name}_m{gind}_s{logs0}_b{bratio}_{idx}"
     full_path = path + "/" + full_name
 
     # Absolutely no way we get more than 10000 rays in one pixel
@@ -184,7 +185,7 @@ def save_hitmap(hitmap, source_model, source_profile, idx, name, path):
 
 
 # --- MAIN ---
-def randomize_and_save(b, zs, at, source_model, source_profile, rng, save_path, name):
+def randomize_and_save(b, zs, at, source_model, source_profile, rng, save_path, expname, bratio):
     nside = hp.get_nside(at)
 
     es = np.linspace(2e19, 8e19, 7)
@@ -202,10 +203,14 @@ def randomize_and_save(b, zs, at, source_model, source_profile, rng, save_path, 
     flux_factors = [fast_flux_factor(zs, source_profile, dndr, at) for dndr in dndrs]
     flux_factors_pro = [fast_flux_factor(zs, source_profile, dndr, at) for dndr in dndrs_pro]
 
-    # mf = analysis.BigMatchedFilterTest(create_average_map(b, sum(dndrs[4:]), zs, at, source_profile))
-    # mf.save(f"cr_output/patterns/mf_{name}_e2_nuc2")
-    # mf = analysis.BigMatchedFilterTest(create_average_map(b, sum(dndrs_pro[4:]), zs, at, source_profile))
-    # mf.save(f"cr_output/patterns/mf_{name}_e2_pro2")
+    # mf = analysis.BigMatchedFilterTest(create_average_map(b, sum(dndrs), zs, at, source_profile))
+    # mf.save(f"cr_output/patterns/mf_{expname}_b{bratio}_e2_nuc")
+    # mf = analysis.BigMatchedFilterTest(create_average_map(b, sum(dndrs_pro), zs, at, source_profile))
+    # mf.save(f"cr_output/patterns/mf_{expname}_b{bratio}_e2_pro")
+    # mf = analysis.BigMatchedFilterTest(create_average_map(b, sum(dndrs[2:]), zs, at, source_profile))
+    # mf.save(f"cr_output/patterns/mf_{expname}_b{bratio}_e4_nuc")
+    # mf = analysis.BigMatchedFilterTest(create_average_map(b, sum(dndrs_pro[2:]), zs, at, source_profile))
+    # mf.save(f"cr_output/patterns/mf_{expname}_b{bratio}_e4_pro")
     # return
 
     for i in tqdm.tqdm(range(10000)):
@@ -222,8 +227,8 @@ def randomize_and_save(b, zs, at, source_model, source_profile, rng, save_path, 
             hitmap_pro = fast_generate_rays_from_sources(sources, flux_factors_pro[j], rng)
             
             if None != save_path:
-                save_hitmap(hitmap, -2, source_profile, i, f"{name}_e{int(es[j] / 1e19)}", save_path)
-                save_hitmap(hitmap_pro, 0, source_profile, i, f"{name}_e{int(es[j] / 1e19)}", save_path)
+                save_hitmap(hitmap, -2, source_profile, bratio, f"{expname}_e{int(es[j] / 1e19)}", i, save_path)
+                save_hitmap(hitmap_pro, 0, source_profile, bratio, f"{expname}_e{int(es[j] / 1e19)}", i, save_path)
                 # save_hitmap(hitmap_iso, -2, source_profile, i, f"auger10I_e{int(es[j] / 1e19)}", save_path)
                 # save_hitmap(hitmap_iso_pro, 0, source_profile, i, f"auger10I_e{int(es[j] / 1e19)}", save_path)
 
@@ -239,7 +244,7 @@ def parse_args():
     parser.add_argument("--exposure", "-e", choices=['isotropic', 'auger', 'auger10', 'ta', '2022'], help="sky exposure pattern to use (default: isotropic)", default='isotropic')
     parser.add_argument("--source-density", "-sd", help="log10 source density (Mpc^-3)", type=float, default=-2.0)
     parser.add_argument("--source-evolution", "-se", help="source evolution index", type=float, default=0.0)
-    parser.add_argument("--bias", "-b", choices=['neutral', 'high'], help="source distribution bias to 2MRS", default='neutral')
+    parser.add_argument("--bias", "-b", choices=['iso', 'neutral', 'high'], help="source distribution bias to 2MRS", default='neutral')
     parser.add_argument("--output-directory", "-o", help="output path to save results in", default=None)
     return parser.parse_args()
 
@@ -250,7 +255,7 @@ def main():
 
     zs = np.linspace(0, 0.4, 401)[1:] # Important: resolution need to be better than the bias map voxel size
 
-    bratio = {"neutral": 1, "high": 2/1.25}[args.bias]
+    bratio = {"iso": 0, "neutral": 1, "high": 2/1.25}[args.bias]
 
     # 200 seems more or less the limit where the avg angular separation under 10 deg
     b = lss.create_source_bias_map_mrsl("MRS/catalog/2mrs_1175_done.dat", "MRS/CORRECTIONS/nearby.txt", args.nside, zs, 0.5, 200, bias_ratio=bratio)
@@ -259,7 +264,14 @@ def main():
 
     source_model = args.source_model
     at = exposure.create_exposure_map(args.nside, args.exposure)
-    randomize_and_save(b, zs, at, source_model, source_profile, rng, args.output_directory, args.exposure)
+
+    # print(plot_average_map(NSIDE, b, zs, 2e19, 2e21, -2, source_profile, "auger10"))
+    # print(plot_average_map(NSIDE, b, zs, 2e19, 2e21, 0, source_profile, "auger10"))
+    # for e0 in np.array([1.99526231e+19, 2.51188643e+19, 3.16227766e+19, 3.98107171e+19, 5.01187234e+19, 6.30957344e+19, 7.94328235e+19, 1.00000000e+20, 1.25892541e+20]):
+    #     print(plot_average_map(NSIDE, b, zs, e0, 2e21, -2, source_profile, "auger10"))
+    # plt.show()
+
+    randomize_and_save(b, zs, at, source_model, source_profile, rng, args.output_directory, args.exposure, bratio)
     return
 
 if __name__ == "__main__":

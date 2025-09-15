@@ -20,14 +20,14 @@ SOURCE_MODEL=-2
 
 
 # --- DATA ---
-def load_hitmap(source_model, exposure, source_profile, name, root_path):
+def load_hitmap(source_model, exposure, source_profile, bratio, name, root_path):
     path = root_path + "/maps"
 
     gind = source_model
     s0 = source_profile[0]
     logs0 = int(np.log10(s0))
 
-    pattern = f"cr_{exposure}_{name}_m{gind}*_s{logs0}_"
+    pattern = f"cr_{exposure}_{name}_b{bratio}_m{gind}_s{logs0}_"
     fnames = [fname for fname in os.listdir(path) if pattern in fname]
     
     fnames.sort(key=lambda fname:int(fname.split('_')[-1][:-4])) # sort by idx
@@ -70,6 +70,7 @@ def parse_args():
     parser.add_argument("--exposure", "-e", choices=['isotropic', 'auger', 'auger10', 'ta', '2022'], help="sky exposure pattern to use (default: isotropic)", default='isotropic')
     parser.add_argument("--source-density", "-sd", help="log10 source density (Mpc^-3)", type=float, default=-2.0)
     parser.add_argument("--source-evolution", "-se", help="source evolution index", type=float, default=0.0)
+    parser.add_argument("--bias", "-b", choices=['iso', 'neutral', 'high'], help="source distribution bias to 2MRS", default='neutral')
     parser.add_argument("--input-directory", "-i", help="path with randomize_rays.py results", default="./cr_output")
     return parser.parse_args()
 
@@ -78,6 +79,7 @@ def main():
     args = parse_args()
 
     at = exposure.create_exposure_map(args.nside, args.exposure)
+    bratio = {"iso": 0, "neutral": 1, "high": 2/1.25}[args.bias]
 
     source_profile = (np.power(10, args.source_density), args.source_evolution)
     es = np.linspace(2e19, 8e19, 7)
@@ -85,8 +87,8 @@ def main():
     iters = []
     iters_pro = []
     for e in es[:-1]:
-        iters.append(iter(load_hitmap(args.source_model, args.exposure, source_profile, f"e{int(e / 1e19)}", args.input_directory)))
-        iters_pro.append(iter(load_hitmap(0, args.exposure, source_profile, f"e{int(e / 1e19)}", args.input_directory)))
+        iters.append(iter(load_hitmap(args.source_model, args.exposure, source_profile, bratio, f"e{int(e / 1e19)}", args.input_directory)))
+        iters_pro.append(iter(load_hitmap(0, args.exposure, source_profile, bratio, f"e{int(e / 1e19)}", args.input_directory)))
 
 
     MFT = False

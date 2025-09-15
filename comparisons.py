@@ -2,9 +2,11 @@ import argparse
 
 import numpy as np
 import scipy as sp
+import healpy as hp
 import matplotlib.pyplot as plt
 
 import propagation
+import analysis
 from cosmology import *
 
 import crpropa
@@ -264,14 +266,47 @@ def plot_side_contours(a, color):
         plt.plot(e1s, thresh, color=color, alpha=.3+.7*i/len(threshd))
 
 
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--data-directory", "-data", help="path with interaction data", default="./CRPropa3/build/data")
-    return parser.parse_args()
+def fig_mfp_comparisons(args):    
+    DP = DataParser(args.data_directory)
 
-def main():
-    args = parse_args()
+    plt.subplot(221)
 
+    plt.ylabel("$\lambda$ (Mpc)")
+    DP.graph_mfp_by_a(56)
+    plt.subplot(222)
+
+    
+    DP.graph_mfp_by_a(28)
+    plt.subplot(223)
+    plt.ylabel("$\lambda$ (Mpc)")
+    plt.xlabel("$\gamma$")
+    DP.graph_mfp_by_a(16)
+    # DP.graph_mfp_by_a(14)
+    plt.subplot(224)
+    plt.xlabel("$\gamma$")
+    DP.graph_mfp_by_a(12)
+    plt.show()
+    return
+
+def fig_effective_distance():
+    zs = np.linspace(0, 0.1)
+    dprop = z2dprop(zs)
+    dlum = dprop * (1+zs)**2
+    dhub = zs * C / H0
+    deff = propagation.z2deff(zs)
+    
+    plt.xlabel("$z$")
+    plt.ylabel("distance (Mpc)")
+    plt.plot(zs, dhub, color='gray', linestyle='--', label="$cz/H_0$")
+    plt.plot(zs, dprop, color='black', label="$d_C$")
+    plt.plot(zs, dlum, color='blue', label="$d_L$")
+    plt.plot(zs, deff, color='goldenrod', label="$\\tilde d$")
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+    return
+
+def fig_contours():
     plt.subplot(221)
     plt.ylabel("distance (Mpc)")
     plot_contours([2e19, 4e19, 6e19, 8e19, 1e20], 56, "darkblue")
@@ -296,43 +331,111 @@ def main():
     plt.show()
     return
 
-    DP = DataParser(args.data_directory)
+def fig_rigidity():
+    r = np.logspace(17.5, 19.4)
+    r = np.linspace(10 ** 17.5, 10 ** 19.4, 3000)
+    r2 = propagation.get_r_dist(2e19, r, -2)
+    r4 = propagation.get_r_dist(4e19, r, -2)
+    r6 = propagation.get_r_dist(6e19, r, -2)
+    # r2 -= r4
+    # r4 -= r6
+    r2 /= np.sum(r2 * np.gradient(r))
+    r2m = np.sum(r2 * r * np.gradient(r))
+    r4 /= np.sum(r4 * np.gradient(r))
+    r4m = np.sum(r4 * r * np.gradient(r))
+    r6 /= np.sum(r6 * np.gradient(r))
+    r6m = np.sum(r6 * r * np.gradient(r))
 
-    plt.subplot(221)
+    r2cum = np.cumsum(r2 * np.gradient(r))
+    i = np.searchsorted(r2cum, 0.01)
+    print(r[i])
+    print(r[i+1])
+    print(r2m)
+    print(r2m / r4m)
 
-    plt.ylabel("$\lambda$ (Mpc)")
-    DP.graph_mfp_by_a(56)
-    plt.subplot(222)
-
-    
-    DP.graph_mfp_by_a(28)
-    plt.subplot(223)
-    plt.ylabel("$\lambda$ (Mpc)")
-    plt.xlabel("$\gamma$")
-    DP.graph_mfp_by_a(16)
-    # DP.graph_mfp_by_a(14)
-    plt.subplot(224)
-    plt.xlabel("$\gamma$")
-    DP.graph_mfp_by_a(12)
+    plt.figure()
+    plt.plot(r / 1e18, r2, color='black', linestyle='-', label='20 EeV')
+    plt.plot(r / 1e18, r4, color='black', linestyle='--', label='40 EeV')
+    plt.plot(r / 1e18, r6, color='black', linestyle=':', label='60 EeV')
+    plt.xlabel("Rigidity (EV)")
+    # plt.vlines([r2m/1e18, r4m/1e18, r6m/1e18], 0, max(r4), linestyles=["-", "-.", ":"], color='brown')
+    plt.xlim(r[0] / 1e18, 15)
+    plt.legend()
     plt.show()
     return
 
-    zs = np.linspace(0, 0.1)
-    dprop = z2dprop(zs)
-    dlum = dprop * (1+zs)**2
-    dhub = zs * C / H0
-    deff = propagation.z2deff(zs)
-    
-    plt.xlabel("$z$")
-    plt.ylabel("distance (Mpc)")
-    plt.plot(zs, dhub, color='gray', linestyle='--', label="$cz/H_0$")
-    plt.plot(zs, dprop, color='black', label="$d_C$")
-    plt.plot(zs, dlum, color='blue', label="$d_L$")
-    plt.plot(zs, deff, color='goldenrod', label="$\\tilde d$")
-    plt.grid(True)
+def fig_distances():
+    zs = np.linspace(0, 0.2)
+
+    dndr = propagation.calc_cosmic_ray_rate_density(2e19, 1e21, zs, -2)
+    dndrp = propagation.calc_cosmic_ray_rate_density_bonus(2e19, 1e21, zs)
+    plt.subplot(131)
+    plt.title(r"$E_o>20~\text{EeV}$")
+    plt.xlim(0, 800)
+    # plt.xscale("log")
+    plt.xlabel("distance (Mpc)")
+    plt.ylabel(r"$\psi$ (rays $\text{yr}^{-1}$ $\text{Mpc}^{-3})$")
+    plt.plot(z2dprop(zs), dndr, color='darkblue')
+    plt.plot(z2dprop(zs), dndrp, color='red')
+
+    # plt.figure()
+    dndr = propagation.calc_cosmic_ray_rate_density(4e19, 1e21, zs, -2)
+    dndrp = propagation.calc_cosmic_ray_rate_density_bonus(4e19, 1e21, zs)
+    plt.subplot(132)
+    plt.title(r"$E_o>40~\text{EeV}$")
+    plt.xlim(0, 600)
+    # plt.xscale("log")
+    plt.xlabel("distance (Mpc)")
+    plt.plot(z2dprop(zs), dndr, color='darkblue')
+    plt.plot(z2dprop(zs), dndrp, color='red')
+
+    dndr = propagation.calc_cosmic_ray_rate_density(6e19, 1e21, zs, -2)
+    dndrp = propagation.calc_cosmic_ray_rate_density_bonus(6e19, 1e21, zs)
+    plt.subplot(133)
+    plt.title(r"$E_o>60~\text{EeV}$")
+    plt.xlim(0, 300)
+    # plt.xscale("log")
+    plt.xlabel("distance (Mpc)")
+    plt.plot(z2dprop(zs), dndr, color='darkblue', label='nuclei')
+    plt.plot(z2dprop(zs), dndrp, color='red', label='protons')
+
+    # dndr = propagation.calc_cosmic_ray_rate_density(8e19, 1e21, zs, -2)
+    # dndrp = propagation.calc_cosmic_ray_rate_density_bonus(8e19, 1e21, zs)
+    # plt.subplot(224)
+    # plt.xlabel("distance (Mpc)")
+    # plt.plot(z2dprop(zs), dndr, color='darkblue')
+    # plt.plot(z2dprop(zs), dndrp, color='red')
     plt.legend()
     plt.show()
+    return
 
+def fig_gmfbins():
+    m = np.ones(hp.nside2npix(32)) * hp.UNSEEN
+    mft = analysis.BigMatchedFilterTest(m)
+    
+    v = 1
+    for r in mft._regions:
+        for ipix in r:
+            m[ipix] = v
+        v = -v
+    
+    hp.mollview(m, cbar=False, title="Division of the sky to regions (galactic coordinates)", cmap="magma")
+    plt.show()
+
+    
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data-directory", "-data", help="path with interaction data", default="./CRPropa3/build/data")
+    return parser.parse_args()
+
+def main():
+    args = parse_args()
+
+    fig_rigidity()
+    #fig_mfp_comparisons(args)
+
+    # fig_gmfbins()
 
 if __name__ == "__main__":
     main()

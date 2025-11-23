@@ -337,6 +337,7 @@ def do_other_tests(a):
     e1s = np.geomspace(2e19, 2e20)
     ds = np.geomspace(1, 5000)
     e0s = np.array([1e20, 8e19, 6e19, 4e19, 2e19])
+    e0s = np.array([10 ** 19.3, 10 ** 19.4, 10 ** 19.5, 10 ** 19.6, 10 ** 19.7][::-1])
 
     threshd = np.zeros((len(e0s), len(e1s)))
 
@@ -386,10 +387,11 @@ def do_other_tests(a):
 
 def main():
     # do_tests(on_g=True)
-    do_other_tests(56)
-    do_other_tests(12)
-    do_other_tests(16)
-    do_other_tests(28)
+    # do_other_tests(56)
+    # do_other_tests(12)
+    # do_other_tests(16)
+    # do_other_tests(28)
+    do_other_tests(14)
     # max_len_tests()
 
     return

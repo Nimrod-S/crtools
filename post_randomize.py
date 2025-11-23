@@ -27,7 +27,7 @@ def load_hitmap(source_model, exposure, source_profile, bratio, name, root_path)
     s0 = source_profile[0]
     logs0 = int(np.log10(s0))
 
-    pattern = f"cr_{exposure}_{name}_b{bratio}_m{gind}_s{logs0}_"
+    pattern = f"cr_{exposure}_{name}_m{gind}_s{logs0}_b{bratio}_"
     fnames = [fname for fname in os.listdir(path) if pattern in fname]
     
     fnames.sort(key=lambda fname:int(fname.split('_')[-1][:-4])) # sort by idx
@@ -37,14 +37,14 @@ def load_hitmap(source_model, exposure, source_profile, bratio, name, root_path)
         yield np.load(full_path).astype(np.int64) # We are going to start summing and averaging stuff, so back to serious numbers lol
     return
 
-def save_result(data, exposure, source_model, source_profile, name, root_path):
+def save_result(data, exposure, source_model, source_profile, bratio, testname, root_path):
     path = root_path + "/results"
     gind = source_model
     s0 = source_profile[0]
     logs0 = int(np.log10(s0))
 
 
-    full_name = f"{name}_{exposure}_m{gind}*_s{logs0}"
+    full_name = f"{testname}_{exposure}_b{bratio}_m{gind}_s{logs0}"
     full_path = path + "/" + full_name
 
     np.save(full_path, data)
@@ -72,6 +72,12 @@ def parse_args():
     parser.add_argument("--source-evolution", "-se", help="source evolution index", type=float, default=0.0)
     parser.add_argument("--bias", "-b", choices=['iso', 'neutral', 'high'], help="source distribution bias to 2MRS", default='neutral')
     parser.add_argument("--input-directory", "-i", help="path with randomize_rays.py results", default="./cr_output")
+
+    parser.add_argument("--lvt", action="store_true")
+    parser.add_argument("--ect", action="store_true")
+    parser.add_argument("--dst", action="store_true")
+    parser.add_argument("--mftc", action="store_true")
+    parser.add_argument("--mftb", action="store_true")
     return parser.parse_args()
 
 def main():
@@ -79,7 +85,7 @@ def main():
     args = parse_args()
 
     at = exposure.create_exposure_map(args.nside, args.exposure)
-    bratio = {"iso": 0, "neutral": 1, "high": 2/1.25}[args.bias]
+    bratio = {"iso": 0, "neutral": 1, "high": 1.7}[args.bias]
 
     source_profile = (np.power(10, args.source_density), args.source_evolution)
     es = np.linspace(2e19, 8e19, 7)
@@ -91,56 +97,50 @@ def main():
         iters_pro.append(iter(load_hitmap(0, args.exposure, source_profile, bratio, f"e{int(e / 1e19)}", args.input_directory)))
 
 
-    MFT = False
-    MFTI = False
-    MFT2 = True
-    LVT = False
+    MFTC = args.mftc
+    MFTB = args.mftb
+    LVT = args.lvt
     MPT = False
-    ECT = False
-    DST = False
+    ECT = args.ect
+    DST = args.dst
 
 
-    if MFT:
-        mfnuc = analysis.BigMatchedFilterTest.load(f"cr_output/patterns/mf_{args.exposure}_e2_nuc")
-        mfpro = analysis.BigMatchedFilterTest.load(f"cr_output/patterns/mf_{args.exposure}_e2_pro")
-
+    if MFTC:
+        mfnuc = analysis.BigMatchedFilterTest.load(f"cr_output/patterns/mf_{args.exposure}_b1_e2_nuc")
+        mfpro = analysis.BigMatchedFilterTest.load(f"cr_output/patterns/mf_{args.exposure}_b1_e2_pro")
+        
         nuc_vs_nuc = []
         nuc_vs_pro = []
         pro_vs_nuc = []
         pro_vs_pro = []
-    if MFTI: 
-        mfiso = analysis.BigMatchedFilterTest.load(f"cr_output/patterns/mf_{args.exposure}_e2_iso")
-
-        nuc_vs_iso = []
-        pro_vs_iso = []
-    if MFT2:
-        mfnuc2 = analysis.BigMatchedFilterTest.load(f"cr_output/patterns/mf_{args.exposure}_e2_nuc2")
-        mfpro2 = analysis.BigMatchedFilterTest.load(f"cr_output/patterns/mf_{args.exposure}_e2_pro2")
-
-        nuc_vs_nuc2 = []
-        nuc_vs_pro2 = []
-        pro_vs_nuc2 = []
-        pro_vs_pro2 = []
+    if MFTB:
+        mflow = analysis.BigMatchedFilterTest.load(f"cr_output/patterns/mf_{args.exposure}_b0_e2_nuc")
+        mfhigh = analysis.BigMatchedFilterTest.load(f"cr_output/patterns/mf_{args.exposure}_b1.7_e2_nuc")
+        
+        nuc_vs_low = []
+        nuc_vs_high = []
+        pro_vs_low = []
+        pro_vs_high = []
     if LVT:
-        lvt_angle = 12
+        lvt_angle = 16.5
         lvt = analysis.LocalVarianceTest(lvt_angle, args.nside)
 
         lvt_nuc = []
         lvt_pro = []
     if MPT:
-        mpt_angle = 12
+        mpt_angle = 16.5
         mpt = analysis.MultipolesTest(mpt_angle, at)
 
         mpt_nuc = []
         mpt_pro = []
     if ECT:
-        ect_angle = 12
+        ect_angle = 16.5
         ect = analysis.SmallCorrelationTest(ect_angle, args.nside)
 
         ect_nuc = []
         ect_pro = []
     if DST:
-        dst_angle = 12
+        dst_angle = 16.5
         dst = analysis.MultipolesTest(dst_angle, at)
         
         dst_nuc = []
@@ -150,14 +150,12 @@ def main():
     for hitmaps in tqdm.tqdm(zip(*iters), total=10000):
         low_e_hitmap = sum(hitmaps)
 
-        if MFT:
+        if MFTC:
             nuc_vs_nuc.append(mfnuc.test(low_e_hitmap))
             nuc_vs_pro.append(mfpro.test(low_e_hitmap))
-        if MFTI:
-            nuc_vs_iso.append(mfiso.test(low_e_hitmap))
-        if MFT2:
-            nuc_vs_nuc2.append(mfnuc2.test(low_e_hitmap))
-            nuc_vs_pro2.append(mfpro2.test(low_e_hitmap))
+        if MFTB:
+            nuc_vs_low.append(mflow.test(low_e_hitmap))
+            nuc_vs_high.append(mfhigh.test(low_e_hitmap))
         if LVT:
             lvt_nuc.append(lvt.test(low_e_hitmap))
         if MPT:
@@ -176,14 +174,12 @@ def main():
     for hitmaps in tqdm.tqdm(zip(*iters_pro), total=10000):
         low_e_hitmap = sum(hitmaps)
 
-        if MFT:
+        if MFTC:
             pro_vs_nuc.append(mfnuc.test(low_e_hitmap))
             pro_vs_pro.append(mfpro.test(low_e_hitmap))
-        if MFTI:
-            pro_vs_iso.append(mfiso.test(low_e_hitmap))
-        if MFT2:
-            pro_vs_nuc2.append(mfnuc2.test(low_e_hitmap))
-            pro_vs_pro2.append(mfpro2.test(low_e_hitmap))
+        if MFTB:
+            pro_vs_low.append(mflow.test(low_e_hitmap))
+            pro_vs_high.append(mfhigh.test(low_e_hitmap))
         if LVT:
             lvt_pro.append(lvt.test(low_e_hitmap))
         if MPT:
@@ -199,64 +195,57 @@ def main():
 
 
 
-    if MFT:
+    if MFTC:
         nuc_vs_nuc = np.array(nuc_vs_nuc)
         nuc_vs_pro = np.array(nuc_vs_pro)
         pro_vs_nuc = np.array(pro_vs_nuc)
         pro_vs_pro = np.array(pro_vs_pro)
 
-        save_result(nuc_vs_nuc, args.exposure, args.source_model, source_profile, "mfnuc", args.input_directory)
-        save_result(pro_vs_nuc, args.exposure, 0, source_profile, "mfnuc", args.input_directory)
+        save_result(nuc_vs_nuc, args.exposure, args.source_model, source_profile, bratio, "mfnuc", args.input_directory)
+        save_result(pro_vs_nuc, args.exposure, 0, source_profile, bratio, "mfnuc", args.input_directory)
 
-        save_result(nuc_vs_pro, args.exposure, args.source_model, source_profile, "mfpro", args.input_directory)
-        save_result(pro_vs_pro, args.exposure, 0, source_profile, "mfpro", args.input_directory)
+        save_result(nuc_vs_pro, args.exposure, args.source_model, source_profile, bratio, "mfpro", args.input_directory)
+        save_result(pro_vs_pro, args.exposure, 0, source_profile, bratio, "mfpro", args.input_directory)
 
-    if MFTI:
-        nuc_vs_iso = np.array(nuc_vs_iso)
-        pro_vs_iso = np.array(pro_vs_iso)
+    if MFTB:
+        nuc_vs_low = np.array(nuc_vs_low)
+        nuc_vs_high = np.array(nuc_vs_high)
+        pro_vs_low = np.array(pro_vs_low)
+        pro_vs_high = np.array(pro_vs_high)
 
-        save_result(nuc_vs_iso, args.exposure, args.source_model, source_profile, "mfiso", args.input_directory)
-        save_result(pro_vs_iso, args.exposure, 0, source_profile, "mfiso", args.input_directory)
-    
-    if MFT2:
-        nuc_vs_nuc2 = np.array(nuc_vs_nuc2)
-        nuc_vs_pro2 = np.array(nuc_vs_pro2)
-        pro_vs_nuc2 = np.array(pro_vs_nuc2)
-        pro_vs_pro2 = np.array(pro_vs_pro2)
+        save_result(nuc_vs_low, args.exposure, args.source_model, source_profile, bratio, "mflow", args.input_directory)
+        save_result(pro_vs_low, args.exposure, 0, source_profile, bratio, "mflow", args.input_directory)
 
-        save_result(nuc_vs_nuc2, args.exposure, args.source_model, source_profile, "mfnuc2", args.input_directory)
-        save_result(pro_vs_nuc2, args.exposure, 0, source_profile, "mfnuc2", args.input_directory)
-
-        save_result(nuc_vs_pro2, args.exposure, args.source_model, source_profile, "mfpro2", args.input_directory)
-        save_result(pro_vs_pro2, args.exposure, 0, source_profile, "mfpro2", args.input_directory)
+        save_result(nuc_vs_high, args.exposure, args.source_model, source_profile, bratio, "mfhig", args.input_directory)
+        save_result(pro_vs_high, args.exposure, 0, source_profile, bratio, "mfhig", args.input_directory)
 
     if LVT:
         lvt_nuc = np.array(lvt_nuc)
         lvt_pro = np.array(lvt_pro)
 
-        save_result(lvt_nuc, args.exposure, args.source_model, source_profile, f"lv{lvt_angle}", args.input_directory)
-        save_result(lvt_pro, args.exposure, 0, source_profile, f"lv{lvt_angle}", args.input_directory)
+        save_result(lvt_nuc, args.exposure, args.source_model, source_profile, bratio, f"lv{lvt_angle}", args.input_directory)
+        save_result(lvt_pro, args.exposure, 0, source_profile, bratio, f"lv{lvt_angle}", args.input_directory)
 
     if MPT:
         mpt_nuc = np.array(mpt_nuc)
         mpt_pro = np.array(mpt_pro)
 
-        save_result(mpt_nuc, args.exposure, args.source_model, source_profile, f"mp_e2", args.input_directory)
-        save_result(mpt_pro, args.exposure, 0, source_profile, f"mp_e2", args.input_directory)
+        save_result(mpt_nuc, args.exposure, args.source_model, source_profile, bratio, f"mp_e2", args.input_directory)
+        save_result(mpt_pro, args.exposure, 0, source_profile, bratio, f"mp_e2", args.input_directory)
 
     if ECT:
         ect_nuc = np.array(ect_nuc)
         ect_pro = np.array(ect_pro)
 
-        save_result(ect_nuc, args.exposure, args.source_model, source_profile, f"ec{ect_angle}_e2e4", args.input_directory)
-        save_result(ect_pro, args.exposure, 0, source_profile, f"ec{ect_angle}_e2e4", args.input_directory)
+        save_result(ect_nuc, args.exposure, args.source_model, source_profile, bratio, f"ec{ect_angle}_e2e4", args.input_directory)
+        save_result(ect_pro, args.exposure, 0, source_profile, bratio, f"ec{ect_angle}_e2e4", args.input_directory)
 
     if DST:
         dst_nuc = np.array(dst_nuc)
         dst_pro = np.array(dst_pro)
 
-        save_result(dst_nuc, args.exposure, args.source_model, source_profile, f"ds_e2e4", args.input_directory)
-        save_result(dst_pro, args.exposure, 0, source_profile, f"ds_e2e4", args.input_directory)
+        save_result(dst_nuc, args.exposure, args.source_model, source_profile, bratio, f"ds_e2e4", args.input_directory)
+        save_result(dst_pro, args.exposure, 0, source_profile, bratio, f"ds_e2e4", args.input_directory)
 
     
 

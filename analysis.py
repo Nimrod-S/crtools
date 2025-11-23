@@ -204,14 +204,14 @@ class SmallCorrelationTest:
         # hp.mollview(h4)
         # plt.show()
 
-        # proj = 0
-        # norm1 = 0
-        # norm2 = 0
-        # for i in range(len(h1)):
-        #     proj += h1[i] * h2[i]
-        #     norm1 += h1[i] * h1[i]
-        #     norm2 += h2[i] * h2[i]
-        # return proj / np.sqrt(norm1 * norm2)
+        proj = 0
+        s1 = 0
+        s2 = 0
+        for i in range(len(h1)):
+            proj += h1[i] * h2[i]
+            s1 += h1[i]
+            s2 += h2[i]
+        return proj / s1 / s2
 
         # return np.dot(h1, h2) / np.linalg.norm(h1) / np.linalg.norm(h2) #np.sqrt(np.dot(h1, h1) * np.dot(h2, h2))
         return np.dot(h1, h2) / np.sum(h1) / np.sum(h2)

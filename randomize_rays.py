@@ -88,7 +88,9 @@ def plot_average_map(nside, b, zs, e0min, e0max, source_model, source_profile, e
 
     # hitmap = hp.sphtfunc.smoothing(hitmap, sigma=20 * np.pi / 180)
     # hitmap /= np.sum(hitmap) / 1e4
-    hp.mollview(hitmap, title=ptitle)
+    mn = np.mean(hitmap)
+    dl = hitmap / mn - 1
+    hp.mollview(dl, title=ptitle, min=-0.77, max=2.02)
     # hp.mollview(hitmap, title=ptitle, min=0, max=1.9)
 
     return np.sum(hitmap)
@@ -255,7 +257,7 @@ def main():
 
     zs = np.linspace(0, 0.4, 401)[1:] # Important: resolution need to be better than the bias map voxel size
 
-    bratio = {"iso": 0, "neutral": 1, "high": 2/1.25}[args.bias]
+    bratio = {"iso": 0, "neutral": 1, "high": 1.7}[args.bias]
 
     # 200 seems more or less the limit where the avg angular separation under 10 deg
     b = lss.create_source_bias_map_mrsl("MRS/catalog/2mrs_1175_done.dat", "MRS/CORRECTIONS/nearby.txt", args.nside, zs, 0.5, 200, bias_ratio=bratio)
@@ -265,7 +267,12 @@ def main():
     source_model = args.source_model
     at = exposure.create_exposure_map(args.nside, args.exposure)
 
-    # print(plot_average_map(NSIDE, b, zs, 2e19, 2e21, -2, source_profile, "auger10"))
+    print(plot_average_map(NSIDE, b, zs, 2e19, 2e21, -2, source_profile, "isotropic"))
+    print(plot_average_map(NSIDE, b, zs, 2e19, 2e21, 0, source_profile, "isotropic"))
+    print(plot_average_map(NSIDE, b, zs, 4e19, 2e21, -2, source_profile, "isotropic"))
+    print(plot_average_map(NSIDE, b, zs, 4e19, 2e21, 0, source_profile, "isotropic"))
+    plt.show()    
+    return
     # print(plot_average_map(NSIDE, b, zs, 2e19, 2e21, 0, source_profile, "auger10"))
     # for e0 in np.array([1.99526231e+19, 2.51188643e+19, 3.16227766e+19, 3.98107171e+19, 5.01187234e+19, 6.30957344e+19, 7.94328235e+19, 1.00000000e+20, 1.25892541e+20]):
     #     print(plot_average_map(NSIDE, b, zs, e0, 2e21, -2, source_profile, "auger10"))

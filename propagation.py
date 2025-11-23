@@ -14,6 +14,7 @@ F = [0.005, 2/2, 9.46, 10.31, 1.2] # F[4]=38/37
 F = [0.0095, 2/2, 9.46, 10.31, 1.027] # F[4]=38/37
 
 F = [0.0095, 2/2, 9.5, 10.3, 4/3] # F[4]=38/37
+F = [0.0095, 2/2, 9.5, 10.3, 4/3] # F[4]=38/37
 def mfp1(a, g):
     a_factor = F[0] * np.power((a/56), -F[1])
     lg = np.log10(g)
@@ -25,6 +26,8 @@ def mfp1(a, g):
 def d1(a, g, e0):
     return a * mfp1(a, g) * (np.log(a * g * MP) - np.log(e0))
 
+def d2(a, g, e0, l):
+    return a * l * (np.log(a * g * MP) - np.log(e0))
 
 
 MFP_EVOLUTION=-3-2*F[4]
@@ -44,9 +47,19 @@ def lossfactor_comovingd(a, g, d):
     return np.exp(-d / mfp1(a, g) / a)
 
 
+def f(x):
+    # if x < 1:
+    #     return x ** 2 * np.e
+    # else:
+    return x ** 2 * np.exp(-x**1)
+    
+
+
 def dndr(d, a, lowa, higha, gind, econvert, es, ds):
     # TODO maybe clean up some of the econvert stuff to make it more clear
     # STUPID
+    # if a == 14 and es[0] > 10**19.7:
+    #     return 0
     startidx, stopidx = np.argmax(ds > d), len(ds) - 1 - np.argmax(ds[::-1] > d)
     if startidx == 0 and ds[0] <= d:
         return 0
@@ -67,12 +80,17 @@ def dndr(d, a, lowa, higha, gind, econvert, es, ds):
     
     if gind == -2:
         # Now this is just a simple integral between e1 and e2 of something that is solvable
+        return sp.integrate.quad(f, x1, x2)[0]
         return (x1**2 + 2*x1 + 2)*np.exp(-x1) - (x2**2 + 2*x2 + 2)*np.exp(-x2)
     elif gind == 1:
         return exp1(x1) - exp1(x2)
     else:
+        return (sp.special.gammainc(1 - gind, x2) - sp.special.gammainc(1 - gind, x1)) * math.gamma(1-gind)
         print("Oh no")
         return None
+
+import comparisons
+DP = comparisons.DataParser("/home/nimrod/physics/uhecr/CRPropa3/build/data")
 
 def calc_cosmic_ray_rate_density(e0min, e0max, zs, source_model, lowa=0, higha=0):
     if source_model == 0: # TODO make this less hack-y
@@ -84,6 +102,18 @@ def calc_cosmic_ray_rate_density(e0min, e0max, zs, source_model, lowa=0, higha=0
     ds = z2deff(zs)
 
     dndrs_borders = {14: [], 28: [], 56: []}
+    # if lowa == 38.5:
+    #     dndrs_borders = {56: []}
+    #     lowa = 0
+    #     higha = 0
+    # if lowa == 22.5:
+    #     dndrs_borders = {28: []}
+    #     lowa = 0
+    #     higha = 0
+    # if lowa == 8:
+    #     dndrs_borders = {14: []}
+    #     lowa = 0
+    #     higha = 0
 
     for i in range(2):
         e0 = [e0min, e0max][i]
@@ -94,10 +124,19 @@ def calc_cosmic_ray_rate_density(e0min, e0max, zs, source_model, lowa=0, higha=0
                 continue
 
             econvert = zA[a] * rc
-            source_ds = d1(a, source_es / (a * MP), e0)
+            # source_ds = d1(a, source_es / (a * MP), e0)
+            # l = np.array([DP.mfp(a, g) for g in source_es / (a * MP)])
+            l = DP.mfp(a, source_es / (a * MP))
+            source_ds = d2(a, source_es / (a * MP), e0, l)
             
             dndrs_borders[a].append(j * iA[a] * np.array([dndr(d, a, lowa, higha, gind, econvert, source_es, source_ds) / econvert for d in ds]))
 
+    if (14 in dndrs_borders.keys()) and np.log10(e0min) > 19.6 and np.log10(e0min) < 19.7:
+        # plt.figure()
+        # plt.title(e0min)
+        i = np.where(ds < 200)
+        # plt.plot(ds[i], dndrs_borders[14][0][i])
+        
 
     # No need to differentiate, we are looking at a range of energy so just subtraction is fine
     dndrs = sum([dndrs_borders[a][0] - dndrs_borders[a][1] for a in dndrs_borders.keys()])
@@ -177,18 +216,21 @@ def get_source_parameters(model):
         fR = {4: 2 /2, 14: 6.2/7, 28: 1/14, 56: .2/26}
 
         fR = {4: 2 /2, 14: 6.2/7, 28: 1.4/14, 56: .3/26}
-        # fR = {4: 2 /2, 14: 6.2/7, 28: 0.99/14, 56: .3/26}
-        # fR = {4: 0.240 / 2, 14: 0.648 / 7, 28: 0.086 / 14, 56: 0.024 / 26}
-        # fR = {4: 0.240 / 2, 14: 0.648 / 7, 28: 0.14 / 14, 56: 0.024 / 26}
+        fR = {4: 2 /2, 14: 6.4/7, 28: 1.2/14, 56: .2/26}
+        
 
         rc = 1.3e18 # at least I think
         rc = 10 ** 18.15
         rc = 1.3e18
+        
         rc = 10 ** 18.2
+        rc = 10 ** 18.15
+        # gind = -1.3
+        
         q=4e44
-        q = 5.6e44
+        q = 10e44
+        # q=5e44
         q=5e44
-        q=4.7e44
     elif model == -10:
         gind = -0.45
         rc = 1.6e18

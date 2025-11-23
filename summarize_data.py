@@ -260,12 +260,12 @@ def main():
 
     # lvr = analysis.LocalVarianceTest1(at)
     # print(f"wow {lvr.test(m)}")
-    sc = analysis.SmallCorrelationTest(12, args.nside)
+    sc = analysis.SmallCorrelationTest(16.5, args.nside)
     print(f"sc: {sc.test_against(m, m2)}")
 
     lv2 = analysis.LocalVarianceTest(gmf.deflection_random(4e18) * 180 / np.pi, hp.get_nside(m))
     print(f"local variance {lv2.test(m)}")
-    lv2 = analysis.LocalVarianceTest(12, hp.get_nside(m))
+    lv2 = analysis.LocalVarianceTest(16.5, hp.get_nside(m))
     print(f"local variance {lv2.test(m)}")
     lv2 = analysis.LocalVarianceTest(20, hp.get_nside(m))
     print(f"local variance {lv2.test(m)}")
@@ -274,12 +274,12 @@ def main():
     lv2 = analysis.LocalVarianceTest(40, hp.get_nside(m))
     print(f"local variance {lv2.test(m)}")
 
-    mfnuc = analysis.BigMatchedFilterTest.load("cr_output/patterns/mf_auger10_e2_nuc")
-    mfpro = analysis.BigMatchedFilterTest.load("cr_output/patterns/mf_auger10_e2_pro")
-    mfiso = analysis.BigMatchedFilterTest.load("cr_output/patterns/mf_auger10_e2_iso")
+    mfnuc = analysis.BigMatchedFilterTest.load("cr_output/patterns/mf_auger10_b1_e2_nuc")
+    mfpro = analysis.BigMatchedFilterTest.load("cr_output/patterns/mf_auger10_b1_e2_pro")
+    mfhig = analysis.BigMatchedFilterTest.load("cr_output/patterns/mf_auger10_b1.7_e2_nuc")
     print(f"mf nuc: {mfnuc.test(m)}")
     print(f"mf pro: {mfpro.test(m)}")
-    print(f"mf iso: {mfiso.test(m)}")
+    print(f"mf iso: {mfhig.test(m)}")
 
 
     r = hp.Rotator(rot=(137.37, 0, 83.68))

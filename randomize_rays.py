@@ -90,7 +90,7 @@ def plot_average_map(nside, b, zs, e0min, e0max, source_model, source_profile, e
     # hitmap /= np.sum(hitmap) / 1e4
     mn = np.mean(hitmap)
     dl = hitmap / mn - 1
-    hp.mollview(dl, title=ptitle, min=-0.77, max=2.02)
+    hp.mollview(dl, title="", min=-0.54, max=1.37)
     # hp.mollview(hitmap, title=ptitle, min=0, max=1.9)
 
     return np.sum(hitmap)

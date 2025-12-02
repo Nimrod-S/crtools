@@ -64,19 +64,19 @@ for e0 in tqdm.tqdm(e0s):
     # )
     cumspec_iron2.append(
         sp.integrate.cumulative_trapezoid(
-            propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, model, lowa=38.5, higha=56),
+            propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, model, lowa=38, higha=56),
             ds
         )[-1] / mpc_in_km ** 2 / (4 * np.pi)
     )
     cumspec_sil2.append(
         sp.integrate.cumulative_trapezoid(
-            propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, model, lowa=22.5, higha=38.5),
+            propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, model, lowa=22, higha=38),
             ds
         )[-1] / mpc_in_km ** 2 / (4 * np.pi)
     )
     cumspec_cno2.append(
         sp.integrate.cumulative_trapezoid(
-            propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, model, lowa=8, higha=22.5),
+            propagation.calc_cosmic_ray_rate_density(e0, ceiling, zs, model, lowa=8, higha=22),
             ds
         )[-1] / mpc_in_km ** 2 / (4 * np.pi)
     )
@@ -86,13 +86,13 @@ for e0 in tqdm.tqdm(e0s):
     #         ds
     #     )[-1] / mpc_in_km ** 2 / (4 * np.pi)
     # )
-    cumspec_pro2.append(
-        sp.integrate.cumulative_trapezoid(
-            propagation.calc_cosmic_ray_rate_density_bonus(e0, ceiling + 1e23, zs),
-            ds
-        )[-1] / mpc_in_km ** 2 / (4 * np.pi)
-    )
-    # cumspec_pro2.append(1)
+    # cumspec_pro2.append(
+    #     sp.integrate.cumulative_trapezoid(
+    #         propagation.calc_cosmic_ray_rate_density_bonus(e0, ceiling + 1e23, zs),
+    #         ds
+    #     )[-1] / mpc_in_km ** 2 / (4 * np.pi)
+    # )
+    cumspec_pro2.append(1)
 
     # cumspec_nuc2.append(propagation.integrate_spectrum(e0, -2, 1, 56) / mpc_in_km ** 2 / (4 * np.pi))
     # cumspec_iron.append(propagation.integrate_spectrum(e0, -2, 38.5, 56) / mpc_in_km ** 2 / (4 * np.pi))
@@ -150,7 +150,7 @@ def plot_file_spectrum(filepath):
 
 # plt.plot(e0s, spec_nuc * e0s**3, color='brown')
 # plt.plot(e0s, spec_pro * e0s**3)
-plt.plot(np.log10(e0s), np.log10(spec_pro2 * e0s**3), color="red", linestyle=":", label="proton model", linewidth=3)
+# plt.plot(np.log10(e0s), np.log10(spec_pro2 * e0s**3), color="red", linestyle=":", label="proton model", linewidth=3)
 plt.plot(np.log10(e0s), np.log10(spec_nuc2 * e0s**3), color='black', linestyle=':', label="nuclei model (total)", linewidth=3)
 plt.plot(np.log10(e0s), np.log10(smear(e0s ,spec_nuc2, .07) * e0s**3), color='gray', linestyle=':', label="nuclei model (total)", linewidth=1)
 # plt.plot(e0s, spec_iron * e0s**3, color='blue')

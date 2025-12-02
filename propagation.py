@@ -3,6 +3,7 @@ import numpy as np
 import scipy as sp
 from scipy.special import exp1
 
+import mfp
 from cosmology import *
 
 MP = .938e9
@@ -13,7 +14,6 @@ MP = .938e9
 F = [0.005, 2/2, 9.46, 10.31, 1.2] # F[4]=38/37
 F = [0.0095, 2/2, 9.46, 10.31, 1.027] # F[4]=38/37
 
-F = [0.0095, 2/2, 9.5, 10.3, 4/3] # F[4]=38/37
 F = [0.0095, 2/2, 9.5, 10.3, 4/3] # F[4]=38/37
 def mfp1(a, g):
     a_factor = F[0] * np.power((a/56), -F[1])
@@ -26,8 +26,12 @@ def mfp1(a, g):
 def d1(a, g, e0):
     return a * mfp1(a, g) * (np.log(a * g * MP) - np.log(e0))
 
-def d2(a, g, e0, l):
-    return a * l * (np.log(a * g * MP) - np.log(e0))
+DP = mfp.DataParser("/home/nimrod/physics/uhecr/CRPropa3/build/data")
+def mfp2(a, g):
+    return DP.mfp(a, g)
+
+def d2(a, g, e0):
+    return a * mfp2(a, g) * (np.log(a * g * MP) - np.log(e0))
 
 
 MFP_EVOLUTION=-3-2*F[4]
@@ -89,8 +93,6 @@ def dndr(d, a, lowa, higha, gind, econvert, es, ds):
         print("Oh no")
         return None
 
-import comparisons
-DP = comparisons.DataParser("/home/nimrod/physics/uhecr/CRPropa3/build/data")
 
 def calc_cosmic_ray_rate_density(e0min, e0max, zs, source_model, lowa=0, higha=0):
     if source_model == 0: # TODO make this less hack-y
@@ -125,9 +127,7 @@ def calc_cosmic_ray_rate_density(e0min, e0max, zs, source_model, lowa=0, higha=0
 
             econvert = zA[a] * rc
             # source_ds = d1(a, source_es / (a * MP), e0)
-            # l = np.array([DP.mfp(a, g) for g in source_es / (a * MP)])
-            l = DP.mfp(a, source_es / (a * MP))
-            source_ds = d2(a, source_es / (a * MP), e0, l)
+            source_ds = d2(a, source_es / (a * MP), e0)
             
             dndrs_borders[a].append(j * iA[a] * np.array([dndr(d, a, lowa, higha, gind, econvert, source_es, source_ds) / econvert for d in ds]))
 
@@ -206,31 +206,33 @@ def get_source_parameters(model):
         rc = 10 ** (18.2)
         q = 4e44
     elif model == -2:
-        gind = -2
-        fR = {4: 4, 14: 1, 28: 1/6, 56: 1/60} # Unclear values here too
-        
-        fR = {4: 0.5, 14: 0.4, 28: 0.05, 56: 0.005}
-        fR = {4: 23/2, 14: 72/7, 28: 2.6/14, 56: 3.1/26}
-        fR = {4: 0.98 * 2**3, 
-              14: 1.5 * 7**3, 28: 5e-4 * 14**2, 56: 5e-5 * 26**3}
-        fR = {4: 2 /2, 14: 6.2/7, 28: 1/14, 56: .2/26}
-
-        fR = {4: 2 /2, 14: 6.2/7, 28: 1.4/14, 56: .3/26}
-        fR = {4: 2 /2, 14: 6.4/7, 28: 1.2/14, 56: .2/26}
+        # fR = {4: 4, 14: 1, 28: 1/6, 56: 1/60} # Unclear values here too
+        # fR = {4: 0.5, 14: 0.4, 28: 0.05, 56: 0.005}
+        # fR = {4: 23/2, 14: 72/7, 28: 2.6/14, 56: 3.1/26}
+        # fR = {4: 0.98 * 2**3, 
+        #       14: 1.5 * 7**3, 28: 5e-4 * 14**2, 56: 5e-5 * 26**3}
+        # fR = {4: 2 /2, 14: 6.2/7, 28: 1/14, 56: .2/26}
+        # fR = {4: 2 /2, 14: 6.2/7, 28: 1.4/14, 56: .3/26}
+        # fR = {4: 2 /2, 14: 6.2/7, 28: 1/14, 56: .16/26}
         
 
-        rc = 1.3e18 # at least I think
-        rc = 10 ** 18.15
-        rc = 1.3e18
+        # rc = 1.3e18 # at least I think
+        # rc = 10 ** 18.15
+        # rc = 1.3e18
+        # rc = 10 ** 18.2
         
-        rc = 10 ** 18.2
-        rc = 10 ** 18.15
         # gind = -1.3
         
-        q=4e44
-        q = 10e44
+        # q=4e44
+        # q = 10e44
         # q=5e44
-        q=5e44
+        # q=4.7e44
+
+        gind = -2
+        fR = {4: 2 /2, 14: 6.2/7, 28: .9/14, 56: .16/26}
+        rc = 10 ** 18.15
+        q=5.85e44
+
     elif model == -10:
         gind = -0.45
         rc = 1.6e18

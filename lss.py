@@ -1,3 +1,5 @@
+import argparse
+
 import numpy as np
 import scipy as sp
 import healpy as hp
@@ -144,73 +146,6 @@ def fill_galactic_plane(catalog_data, min_z, max_z):
                 })
 
 
-def create_source_bias_map_mrs(catalog_path, correction_path, nside, zs, min_catalog_dl, max_catalog_dl, fill_plane=True):
-    """
-    Below min_catalog_dl, assume there is nothing (basically cut out our sattelite dwarf galaxies)
-    Above max_catalog_dl, assume isotropy
-    """
-    data = parse_catalog_data_mrs(catalog_path, correction_path)
-
-    dls = z2dprop(zs) * (1+zs)
-
-    npix = hp.nside2npix(nside)
-    sangle = hp.nside2pixarea(nside)
-    hpmaps = np.zeros((len(zs), npix))
-    galcounts = np.zeros(len(zs))
-    totalmass = 0
-
-    if (fill_plane):
-        fill_galactic_plane(data, min_catalog_dl * H0 / C, max_catalog_dl * H0 / C)
-
-    # Build a healpy map
-    print(len(data))
-    for entry in data:
-        z = entry['z']
-        dl = z2dprop(z) * (1 + z)
-        if dl > max_catalog_dl or dl < min_catalog_dl:
-            continue
-        if dl > dls[-1]:
-            print("PROBLEM")
-            continue
-        iz = np.argmax(dl <= dls)
-        l, b = entry['l'], entry['b'] # deg
-        ipix = hp.ang2pix(nside, l, b, lonlat=True)
-        
-        m = 1 / selection_func_fit(z) * dl**2 / (1+z) ** 4 # We use da=dl/(1+z)2 for volume element
-        hpmaps[iz][ipix] += m
-        totalmass += m
-
-        galcounts[iz] += 1
-
-
-    # Right now, hpmaps is not volume-normalized and does not represent density, just mass count. We will deal with this later during normalization.
-    normalized = False
-    for i, dl in enumerate(dls):
-        if dl <= max_catalog_dl and galcounts[i] != 0:
-            # Smooth:
-            lmean = (4 * np.pi * dl ** 2 / galcounts[i]) ** (1/2) # Roughly mean distance, in mpc (suspicious geometric factor)
-            lmean = max(lmean, 10)
-
-            hpmaps[i] = hp.sphtfunc.smoothing(hpmaps[i], sigma=lmean / dl)
-
-            # Rarely, numerical artifacts of the smoothing produces some negative values. From experience they are all <1e-4 of the mean so this is probably not that bad. We HAVE to fix it or the poisson distributions will get messed up later. TODO
-            hpmaps[i] = np.maximum(hpmaps[i], 0)
-
-            hpmaps[i] /= dl ** 2 * sangle
-            
-        if dl > max_catalog_dl:
-            # We are out, now normalize and start being isotropic:
-            if not normalized:
-                normalized = True
-                hpmaps[:i] *= np.sum(4 * np.pi * dls[:i] ** 2) / totalmass # I thought about this a lot, this is correct
-        
-            # Just fill with isotropic value
-            hpmaps[i] = np.ones(npix)
-            continue
-
-    return hpmaps
-
-
 def create_source_bias_map_mrsl(catalog_path, correction_path, nside, zs, min_catalog_dl, max_catalog_dl, fill_plane=True, bias_ratio=1):
     """
     Below min_catalog_dl, assume there is nothing (basically cut out our satellite dwarf galaxies)
@@ -271,12 +206,41 @@ def create_source_bias_map_mrsl(catalog_path, correction_path, nside, zs, min_ca
             if not normalized:
                 normalized = True
                 mean_density = totallum / np.sum(4 * np.pi * dls[:i] ** 2) # I thought about this a lot, this is correct
-                hpmaps[:i] = (hpmaps[:i] / mean_density - 1) * bias_ratio + 1
+                hpmaps[:i] /= mean_density
 
-                hpmaps[:i][hpmaps[:i] < 0] = 0
+                # hpmaps[:i] = (hpmaps[:i] / mean_density - 1) * bias_ratio + 1
+                # hpmaps[:i][hpmaps[:i] < 0] = 0
         
             # Just fill with isotropic value
             hpmaps[i] = np.ones(npix)
             continue
 
+    hpmaps = apply_linear_bias(hpmaps, bias_ratio)
     return hpmaps
+
+def apply_linear_bias(m, bias_ratio):
+    b = m.copy()
+    b = (b - 1) * bias_ratio + 1
+    b[b < 0] = 0
+    return b
+
+
+# --- MAIN ---
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--nside", "-n", help="nside for the healpix map", default=32)
+    parser.add_argument("--output-directory", "-o", help="output path to save results in", default="/home/nimrod/physics/uhecr/cr_output")
+    parser.add_argument("--mrs-directory", "-m", help="path for MRS catalog + correction files", default="/home/nimrod/physics/uhecr/MRS")
+    args = parser.parse_args()
+    
+    zs = np.linspace(0, 0.4, 401)[1:] # Important: resolution need to be better than the bias map voxel size
+
+    # 200 seems more or less the limit where the avg angular separation under 10 deg
+    b = create_source_bias_map_mrsl(args.mrs_directory+"/catalog/2mrs_1175_done.dat", args.mrs_directory+"/CORRECTIONS/nearby.txt",
+                                     args.nside, zs, 0.5, 200)
+    
+    np.save(args.output_directory+"/lss/lss_bias_v1", b)
+
+
+if __name__ == "__main__":
+    main()

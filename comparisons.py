@@ -30,10 +30,9 @@ def plot_contours(e0s, a, color):
         gs = e1s / propagation.MP / a
         d = propagation.d1(a, gs, e0)
         d = z2dprop(propagation.deff2z(d))
-        l = np.array([DP.mfp(a, g) for g in gs])
-        d2 = propagation.d2(a, gs, e0, l)
+        d2 = propagation.d2(a, gs, e0)
         d2 = z2dprop(propagation.deff2z(d2))
-        plt.plot(e1s, d, color=color, alpha=1-.7*i/len(e0s), label=f"{int(e0/1e18)} EeV")
+        plt.plot(e1s, d2, color=color, alpha=1-.7*i/len(e0s), label=f"{int(e0/1e18)} EeV")
         # plt.plot(e1s, d2, color="darkgreen", alpha=1-.7*i/len(e0s))
         # plt.text(e1s[3], d[3], f"{int(e0/1e18)}", color=color, alpha=1-.6*i/len(e0s), backgroundcolor='white')
 
@@ -47,8 +46,6 @@ def plot_side_contours(a, color):
 
 
 def fig_mfp_comparisons(args):    
-    DP = mfp.DataParser(args.data_directory)
-
     plt.subplot(221)
 
     plt.ylabel("$\lambda$ (Mpc)")
@@ -88,6 +85,7 @@ def fig_effective_distance():
 
 def fig_contours():
 
+    e0s = [2e19, 3e19, 4e19, 5e19, 6e19, 7e19, 8e19, 9e19, 1e20]
     # plot_contours([10 ** 19.3, 10 ** 19.4, 10 ** 19.5, 10 ** 19.6, 10 ** 19.7], 14, "darkblue")
     # plot_side_contours(14, "darkred")
     # plt.legend()
@@ -96,23 +94,26 @@ def fig_contours():
 
     plt.subplot(221)
     plt.ylabel("distance (Mpc)")
-    plot_contours([2e19, 4e19, 6e19, 8e19, 1e20], 56, "darkblue")
+    plot_contours(e0s, 56, "darkblue")
     plot_side_contours(56, "darkred")
+    # e = np.logspace(19, 20)
+    # ee, dm = propagation.maxd(e, 56)
+    # plt.plot(ee * 56 * propagation.MP, dm, color="black")
 
     plt.subplot(222)
-    plot_contours([2e19, 4e19, 6e19, 8e19, 1e20], 28, "darkblue")
+    plot_contours(e0s, 28, "darkblue")
     plot_side_contours(28, "darkred")
 
     plt.subplot(223)
     plt.xlabel("$E_s$ (eV)")
     plt.ylabel("distance (Mpc)")
-    plot_contours([2e19, 4e19, 6e19, 8e19, 1e20], 16, "darkblue")
+    plot_contours(e0s, 16, "darkblue")
     plot_side_contours(16, "darkred")
 
     plt.subplot(224)
     plt.xlabel("$E_s$ (eV)")
-    plot_contours([2e19, 4e19, 6e19, 8e19, 1e20], 12, "darkblue")
-    plot_side_contours(12, "darkred")
+    plot_contours(e0s, 14, "darkblue")
+    plot_side_contours(14, "darkred")
 
     plt.legend()
     plt.show()
@@ -564,10 +565,10 @@ def parse_args():
 def main():
     args = parse_args()
     global DP 
-    DP = DataParser(args.data_directory)
+    DP = mfp.DataParser(args.data_directory)
 
     # fig_mfp_comparisons(args)
-    # fig_contours()
+    fig_contours()
     # fig_rigidity()
     # fig_distances()
 

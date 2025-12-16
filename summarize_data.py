@@ -176,6 +176,20 @@ def plot_mf(exp, dens, comp, e6=False):
     plt.hist(bbb, bins=b, alpha=.6, label='nuclei, b=2')
     plt.hist(qqq, bins=b, alpha=.6, label='proton, b=2')
 
+def plot_cumspec(data):
+    es = np.array([event['eV'] for event in data])
+    es = np.sort(es)
+    n = len(es)
+    f = np.arange(n) / n
+    plt.stairs(f, edges=es)
+
+def plot_spec(data):
+    ebins = np.logspace(19.3, 21)
+    es = np.array([event['eV'] for event in data])
+    q = np.histogram(es, bins=ebins)
+    print(q)
+    plt.hist(es, bins=ebins)
+
 # --- MAIN ---
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -189,11 +203,11 @@ def main():
 
     data = parse_auger_summaries(args.summary_path)
 
-    eee = np.linspace(8e18, 2e20, 100)
-    cs = np.array([len(energy_filter(data, e, 2e21)) for e in eee])
-    cde = -np.gradient(cs, eee)
-    plt.loglog(eee, cde * eee**3 *10/ (26300+95700))
-    plt.show()
+    # plot_spec(energy_filter(data, 2e19, 2e21))
+    # plt.xscale("log")
+    # plt.yscale("log")
+    # plt.show()
+    # return
 
     
     #data = energy_filter(data, 1e17, 2e18)
@@ -227,22 +241,22 @@ def main():
     for e0 in e0s:
         ns.append(len(energy_filter(data, e0, 2e21)))
     
-    plt.xscale('log')
-    plt.plot(e0s, mc, color='indianred', ls='--')
-    plt.plot(e0s, mcc, color='indianred', ls=':')
-    plt.plot(e0s, mccc, color='indianred', ls='-.')
+    # plt.xscale('log')
+    # plt.plot(e0s, mc, color='indianred', ls='--')
+    # plt.plot(e0s, mcc, color='indianred', ls=':')
+    # plt.plot(e0s, mccc, color='indianred', ls='-.')
 
-    plt.plot(e0s, mp, color='mediumseagreen', ls='--')
-    plt.plot(e0s, mccp, color='mediumseagreen', ls=':')
-    plt.plot(e0s, mcccp, color='mediumseagreen', ls='-.')
+    # plt.plot(e0s, mp, color='mediumseagreen', ls='--')
+    # plt.plot(e0s, mccp, color='mediumseagreen', ls=':')
+    # plt.plot(e0s, mcccp, color='mediumseagreen', ls='-.')
     
-    plt.plot(e0s, mp2, color='green', ls='--')
-    plt.plot(e0s, m1, color='gray', ls='--')
+    # plt.plot(e0s, mp2, color='green', ls='--')
+    # plt.plot(e0s, m1, color='gray', ls='--')
 
-    plt.plot(e0s, ma, color='gold', ls='--')
+    # plt.plot(e0s, ma, color='gold', ls='--')
 
-    plt.scatter(e0s, ns, color='blue')
-    plt.show()
+    # plt.scatter(e0s, ns, color='blue')
+    # plt.show()
 
 
     data = energy_filter(data, 2e19, 2e21)
@@ -252,8 +266,6 @@ def main():
     m2 = build_map(data2, 'G', args.nside)
     
     print(sum(m))
-    hp.mollview(m)
-    plt.show()
 
     # print(analysis.test_smallvar(m, ))
     #print(f"!! {analysis.test_superg(m, 5, 55)}")
@@ -274,16 +286,28 @@ def main():
     lv2 = analysis.LocalVarianceTest(40, hp.get_nside(m))
     print(f"local variance {lv2.test(m)}")
 
-    mfnuc = analysis.BigMatchedFilterTest.load("cr_output/patterns/mf_auger10_b1_e2_nuc")
-    mfpro = analysis.BigMatchedFilterTest.load("cr_output/patterns/mf_auger10_b1_e2_pro")
-    mfhig = analysis.BigMatchedFilterTest.load("cr_output/patterns/mf_auger10_b1.7_e2_nuc")
+    mfnuc = analysis.BigMatchedFilterTest.load("../cr_output/patterns/mf_auger10_b1_e2_nuc")
+    mfpro = analysis.BigMatchedFilterTest.load("../cr_output/patterns/mf_auger10_b1_e2_pro")
+    mfhig = analysis.BigMatchedFilterTest.load("../cr_output/patterns/mf_auger10_b1.7_e2_nuc")
     print(f"mf nuc: {mfnuc.test(m)}")
     print(f"mf pro: {mfpro.test(m)}")
     print(f"mf iso: {mfhig.test(m)}")
 
 
-    r = hp.Rotator(rot=(137.37, 0, 83.68))
     hp.mollview(m)
+    # hp.mollview(m2)
+    # hm = hp.sphtfunc.smoothing(m, sigma=16.3 * np.pi / 180)
+    # hp.mollview(hm)
+    mfnuc.visualize(m)
+    mfpro.visualize(m)
+    # mfnuc = analysis.BigMatchedFilterTest.load("../cr_output/patterns/mf_isotropic_b1_e2_nuc")
+    # mfpro = analysis.BigMatchedFilterTest.load("../cr_output/patterns/mf_isotropic_b1_e2_pro")
+    # mfnuc.visualize(m)
+    # mfpro.visualize(m)
+    plt.show()
+
+
+    r = hp.Rotator(rot=(137.37, 0, 83.68))
 
     # rb, rh = get_ra_dist(data)
     # plt.figure()

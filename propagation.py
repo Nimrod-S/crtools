@@ -1,4 +1,5 @@
-import math
+import argparse
+
 import numpy as np
 import scipy as sp
 from scipy.special import exp1
@@ -51,6 +52,21 @@ def lossfactor_comovingd(a, g, d):
     return np.exp(-d / mfp1(a, g) / a)
 
 
+def maxd(e0, a):
+    thresh_low = 10**F[2] * a * MP / np.exp(1/F[4])
+    thresh_high = 10**F[2] * a * MP / np.exp(10**(F[2]-F[3]))
+    print(thresh_high)
+    print(thresh_low)
+    gm = np.where
+
+    gm = np.select(
+        [e0 < thresh_low, e0 < thresh_high, e0 >= thresh_high],
+        [e0 * np.exp(1/F[4]) / (a * MP), 10**F[2], 10**F[2]] # INCOMPLETE
+    )
+
+    return gm, d1(a, gm, e0)
+
+
 def f(x):
     # if x < 1:
     #     return x ** 2 * np.e
@@ -84,12 +100,11 @@ def dndr(d, a, lowa, higha, gind, econvert, es, ds):
     
     if gind == -2:
         # Now this is just a simple integral between e1 and e2 of something that is solvable
-        return sp.integrate.quad(f, x1, x2)[0]
         return (x1**2 + 2*x1 + 2)*np.exp(-x1) - (x2**2 + 2*x2 + 2)*np.exp(-x2)
     elif gind == 1:
         return exp1(x1) - exp1(x2)
     else:
-        return (sp.special.gammainc(1 - gind, x2) - sp.special.gammainc(1 - gind, x1)) * math.gamma(1-gind)
+        return (sp.special.gammainc(1 - gind, x2) - sp.special.gammainc(1 - gind, x1)) * sp.special.gamma(1-gind)
         print("Oh no")
         return None
 
@@ -173,7 +188,7 @@ def qev(e, z):
 def propa(z, e):
     return e * (1 / (1 + z) + C / (H0 * sqrtH(z) * (1 + z) * xx(e)))
 def calc_cosmic_ray_rate_density_bonus(e0min, e0max, zs):
-    e0max = min(e0max, 4e20)
+    e0max = min(e0max, 1e21)
     e0s = np.linspace(e0min, e0max, num=int(np.ceil((e0max - e0min) / 5e15)))
     es = sp.integrate.solve_ivp(propa, [0, zs[-1]], e0s, t_eval=zs)
     dede = np.gradient(es.y, e0s, axis=0)
@@ -251,7 +266,7 @@ def get_source_parameters(model):
 
     # erg -> eV
     q *= 624150907446
-    j = q / (math.gamma(2-gind))
+    j = q / (sp.special.gamma(2-gind))
 
     # gind : power law index (number like -2 or 1)
     # rc : critical rigidity (V)
@@ -262,3 +277,33 @@ def get_source_parameters(model):
     #   dN/dx = j * iA / (Rc * zA) * x **-gind * exp(-x)
     # where x=E/(ZRc)
     return (gind, rc, zA, iA, j)
+
+# --- MAIN ---
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--nside", "-n", help="nside for the healpix map", default=32)
+    parser.add_argument("--output-directory", "-o", help="output path to save results in", default="/home/nimrod/physics/uhecr/cr_output")
+    args = parser.parse_args()
+    
+    zs = np.linspace(0, 0.4, 401)[1:] # Important: resolution need to be better than the bias map voxel size
+
+    es = np.linspace(2e19, 8e19, 7)
+    es[-1] = 2e22
+
+    dndrs = []
+    dndrs_pro = []
+
+    for i in range(len(es) - 1):
+        dndrs.append(calc_cosmic_ray_rate_density(es[i], es[i+1], zs, -2))
+        dndrs_pro.append(calc_cosmic_ray_rate_density(es[i], es[i+1], zs, 0))
+
+    dndrs = np.array(dndrs)
+    dndrs_pro = np.array(dndrs_pro)
+    
+    np.save(args.output_directory+"/flux/energies_v1", np.array(es))
+    np.save(args.output_directory+"/flux/flux_nuc_v1", dndrs)
+    np.save(args.output_directory+"/flux/flux_pro_v1", dndrs_pro)
+
+
+if __name__ == "__main__":
+    main()

@@ -162,6 +162,16 @@ class BigMatchedFilterTest:
         hitmap_regions1 = np.array(hitmap_regions1)
         hitmap_regions2 = np.array(hitmap_regions2)
         return np.dot(hitmap_regions1, hitmap_regions2)
+    
+    def visualize(self, hitmap):
+        tmap = np.zeros(len(hitmap))
+        hmap = np.zeros(len(hitmap))
+        for region, s in zip(self._regions, self._signal_regions):
+            hmap[region] = np.sum(hitmap[region]) / len(region)
+            tmap[region] = np.exp(s) / len(region)
+
+        hp.mollview(hmap, title="")
+        hp.mollview(tmap, title="")
 
     def save(self, path):
         np.savez(path, *self._regions, signal=self._signal_regions)

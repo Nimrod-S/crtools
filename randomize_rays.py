@@ -12,6 +12,7 @@ import exposure
 import lss
 import propagation
 import gmf
+import crpropa_gmf
 from cosmology import *
 
 NSIDE=32
@@ -238,7 +239,7 @@ def secondary(b, zs, at, source_model, source_profile, save_path, expname, brati
     return
 
 
-def randomize_and_save(nside, s, source_profile, zs, expname, output_directory, save=False):
+def randomize_and_save(nside, s, source_profile, zs, expname, output_directory, save=True):
 
     at = {exp: exposure.create_exposure_map(nside, exp) for exp in expname}
     
@@ -255,22 +256,42 @@ def randomize_and_save(nside, s, source_profile, zs, expname, output_directory, 
         for exp in expname
     }
 
+    rig = np.linspace(10 ** 17.5, 10 ** 19.4, 3000)
+    rsa = [propagation.get_r_dist(e, rig, -2) for e in es]
+    rsad = [rsa[i+1] - rsa[i] for i in range(len(es)-1)]
+    raa = [np.sum(rig * rs) / np.sum(rs) for rs in rsad]
+    rsp = [e for e in es]
+    rap = [(rsp[i+1] + rsp[i]) * 0.5 for i in range(len(es) -1)]
+    lens_n = {name: [crpropa_gmf.proplens(name, r, nside) for r in raa] for name in ["UF23", "JF12", "KST24"]}
+    lens_p = {name: [crpropa_gmf.proplens(name, r, nside) for r in rap] for name in ["UF23", "JF12", "KST24"]}
+
     for i in tqdm.tqdm(range(10000)):
         sources = sp.stats.poisson(s).rvs()
+        
+        # isnz = sources > 0
+        # snz = sources[isnz]
+        # lumf = sp.stats.irwinhall(snz, loc=2/11, scale=18/11).rvs()
+        # sources.astype(np.float64)[isnz] *= lumf
+        # lumf = sp.stats.irwinhall(sources + 1, loc=2/11, scale=18/11).rvs()
+        # sources = sources.astype(np.float64) * lumf
 
         for exp in expname:
-            for j in range(len(n_nuc)):
-                mean_n = np.sum(sources * n_nuc[exp], axis=0)
-                mean_p = np.sum(sources * n_pro[exp], axis=0)
+            for j in range(len(dndrs)):
+
+                sources_n = sources[:, lens_n["KST24"][j]].reshape((len(zs), len(at[exp])))
+                sources_p = sources[:, lens_p["KST24"][j]].reshape((len(zs), len(at[exp])))
+
+                mean_n = np.sum(sources_n * n_nuc[exp][j], axis=0)
+                mean_p = np.sum(sources_p * n_pro[exp][j], axis=0)
 
                 hitmap = sp.stats.poisson(mean_n).rvs()
                 hitmap_pro = sp.stats.poisson(mean_p).rvs()
 
                 if save:
-                    save_hitmap(hitmap, -2, source_profile, f"{exp}_e{int(es[j] / 1e19)}", i, output_directory+"/hitmaps")
-                    save_hitmap(hitmap_pro, 0, source_profile, f"{exp}_e{int(es[j] / 1e19)}", i, output_directory+"/hitmaps")
+                    save_hitmap(hitmap, -2, source_profile, f"{exp}_e{int(es[j] / 1e19)}_KST24", i, output_directory+"/hitmaps")
+                    save_hitmap(hitmap_pro, 0, source_profile, f"{exp}_e{int(es[j] / 1e19)}_KST24", i, output_directory+"/hitmaps")
 
-    
+
     return
 
 # --- MAIN ---
@@ -293,11 +314,12 @@ def main():
     bratio = {"iso": 0, "neutral": 1, "high": 1.7}[args.bias]
 
     b = np.load(args.output_directory + "/lss/lss_bias_v1.npy")
-    source_profile = (np.power(10, args.source_density), args.source_evolution, bratio)
 
-    s = create_mean_source_count_map(b, zs, source_profile)
-    # randomize_and_save(args.nside, s, source_profile, zs, ["2022", "auger10", "isotropic"], args.output_directory)
-    randomize_and_save(args.nside, s, source_profile, zs, [args.exposure], args.output_directory)
+    for sd in [1e-2, 1e-3, 1e-4]:
+        source_profile = (sd, args.source_evolution, bratio)
+        s = create_mean_source_count_map(b, zs, source_profile)
+        randomize_and_save(args.nside, s, source_profile, zs, ["auger10", "isotropic", "2022"], args.output_directory)
+        
     return
 
 if __name__ == "__main__":

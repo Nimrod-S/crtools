@@ -122,7 +122,7 @@ def fig_contours():
 def fig_rigidity():
     r = np.logspace(17.5, 19.4)
     r = np.linspace(10 ** 17.5, 10 ** 19.4, 3000)
-    r2 = propagation.get_r_dist(2e19, r, -2)
+    r2 = propagation.get_r_dist(3e19, r, -2)
     r4 = propagation.get_r_dist(4e19, r, -2)
     r6 = propagation.get_r_dist(6e19, r, -2)
     # r2 -= r4
@@ -135,7 +135,7 @@ def fig_rigidity():
     r6m = np.sum(r6 * r * np.gradient(r))
 
     r2cum = np.cumsum(r2 * np.gradient(r))
-    i = np.searchsorted(r2cum, 0.01)
+    i = np.searchsorted(r2cum, 0.1)
     print(r[i])
     print(r[i+1])
     print(r2m)
@@ -558,7 +558,7 @@ def fig_lvt_results(args):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data-directory", "-data", help="path with interaction data", default="/home/nimrod/physics/uhecr/CRPropa3/build/data")
+    parser.add_argument("--data-directory", "-data", help="path with interaction data", default="../CRPropa3/build/data")
     parser.add_argument("--croutput-directory", "-cr", help="path with files", default="../cr_output")
     return parser.parse_args()
 
@@ -568,8 +568,8 @@ def main():
     DP = mfp.DataParser(args.data_directory)
 
     # fig_mfp_comparisons(args)
-    fig_contours()
-    # fig_rigidity()
+    # fig_contours()
+    fig_rigidity()
     # fig_distances()
 
     # fig_large_results(args)

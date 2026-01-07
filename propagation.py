@@ -165,7 +165,7 @@ def get_r_dist(e0, rs, source_model):
     for a in [14, 28, 56]:
         z = zA[a]
         g = rs * z / MP
-        d = d1(a, g, e0)
+        d = d2(a, g, e0)
         d[np.where(rs * z <= e0)] = 0
         _z = deff2z(d)
         d = z2dprop(_z)

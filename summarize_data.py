@@ -193,7 +193,7 @@ def plot_spec(data):
 # --- MAIN ---
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--summary-path", "-s", help="path for summary dir", default="/home/nimrod/physics/uhecr/summary")
+    parser.add_argument("--summary-path", "-s", help="path for summary dir", default="../summary")
     parser.add_argument("--nside", "-n", help="nside for the healpix map", default=NSIDE)
     return parser.parse_args()
 

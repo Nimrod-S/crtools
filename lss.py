@@ -229,8 +229,8 @@ def apply_linear_bias(m, bias_ratio):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--nside", "-n", help="nside for the healpix map", default=32)
-    parser.add_argument("--output-directory", "-o", help="output path to save results in", default="/home/nimrod/physics/uhecr/cr_output")
-    parser.add_argument("--mrs-directory", "-m", help="path for MRS catalog + correction files", default="/home/nimrod/physics/uhecr/MRS")
+    parser.add_argument("--output-directory", "-o", help="output path to save results in", default="../cr_output")
+    parser.add_argument("--mrs-directory", "-m", help="path for MRS catalog + correction files", default="../MRS")
     args = parser.parse_args()
     
     zs = np.linspace(0, 0.4, 401)[1:] # Important: resolution need to be better than the bias map voxel size

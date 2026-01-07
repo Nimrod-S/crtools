@@ -186,6 +186,98 @@ class BigMatchedFilterTest:
             mf._regions.append(loaded[f'arr_{i}'])
         return mf
     
+
+class BigMatchedFilterTest2:
+    def __init__(self, signal=None):
+        if signal is None:
+            return
+
+        nside = hp.get_nside(signal)
+        npix = len(signal)
+        
+        self._regions = [[], [], [], [], [], []]
+        
+        for ipix in range(npix):
+            lon, lat = hp.pix2ang(nside, ipix, lonlat=True)
+
+            if (0 <= lon < 120):
+                self._regions[0].append(ipix)
+            if (120 <= lon < 150):
+                self._regions[1].append(ipix)
+            if (150 <= lon < 180):
+                self._regions[2].append(ipix)
+            if (180 <= lon < 210):
+                self._regions[3].append(ipix)
+            if (210 <= lon < 240):
+                self._regions[4].append(ipix)
+            if (240 <= lon < 360):
+                self._regions[5].append(ipix)
+            
+
+        # norm = np.mean(signal)
+        # real_signal = np.log(signal / norm)
+        
+        # self._signal_regions = []
+        # for region in self._regions:
+        #     self._signal_regions.append(np.sum(real_signal[region]))
+        # self._signal_regions = np.array(self._signal_regions)
+
+
+        norm_signal = signal / np.mean(signal)
+
+        self._signal_regions = []
+        for region in self._regions:
+            self._signal_regions.append(np.sum(norm_signal[region]))
+        self._signal_regions = np.array(self._signal_regions)
+
+        self._signal_regions = np.log(self._signal_regions)
+        
+
+
+    def test(self, hitmap):
+        hitmap_regions = []
+        for region in self._regions:
+            hitmap_regions.append(np.sum(hitmap[region]))
+        hitmap_regions = np.array(hitmap_regions)
+        sm = np.sum(hitmap_regions)
+        if 0 == sm:
+            return 0
+        return np.dot(hitmap_regions, self._signal_regions) / sm
+
+    def test_against(self, hitmap1, hitmap2):
+        hitmap_regions1 = []
+        hitmap_regions2 = []
+        for region in self._regions:
+            hitmap_regions1.append(np.sum(hitmap1[region]))
+            hitmap_regions2.append(np.sum(hitmap2[region]))
+        hitmap_regions1 = np.array(hitmap_regions1)
+        hitmap_regions2 = np.array(hitmap_regions2)
+        return np.dot(hitmap_regions1, hitmap_regions2)
+    
+    def visualize(self, hitmap):
+        tmap = np.zeros(len(hitmap))
+        hmap = np.zeros(len(hitmap))
+        for region, s in zip(self._regions, self._signal_regions):
+            hmap[region] = np.sum(hitmap[region]) / len(region)
+            tmap[region] = np.exp(s) / len(region)
+
+        hp.mollview(hmap, title="")
+        hp.mollview(tmap, title="")
+
+    def save(self, path):
+        np.savez(path, *self._regions, signal=self._signal_regions)
+
+    @staticmethod
+    def load(path):
+        loaded = np.load(path + ".npz")
+        mf = BigMatchedFilterTest()
+        mf._signal_regions = loaded['signal']
+        mf._regions = []
+        for i in range(len(mf._signal_regions)):
+            mf._regions.append(loaded[f'arr_{i}'])
+        return mf
+
+
 # Consider: import s2fft
 class SmallCorrelationTest:
     def __init__(self, ang, nside):
@@ -254,8 +346,7 @@ class MultipolesTest:
         al = hp.map2alm(hitmap2, lmax=2)
         vec = np.array([np.real(al[3]) * np.sqrt(2), np.imag(al[3]) * np.sqrt(2), np.real(al[1])])
         return vec / np.real(al[0]) * np.sqrt(3)
-        
-
+ 
 
     # TODO do something w/ these functions
     def point(mp):
@@ -270,3 +361,18 @@ class MultipolesTest:
             m[ipix] = np.dot(v, point)
         return m
     
+
+class SmallScaleVarTestXX:
+    def __init__(self, ang, exposure):
+        self._at = exposure
+        self._mask = zoa_mask(hp.npix2nside(len(exposure)))
+
+        self._angle = ang
+
+    def test(self, hitmap, c):
+        hmap = hp.sphtfunc.smoothing(hitmap, sigma=self._angle * np.pi/180)
+
+        hist, be = np.histogram(hmap, bins=np.linspace(0, max(hmap), int(max(hitmap))))
+        cist = np.cumsum(hist) / np.sum(hist)
+        plt.plot(be[:-1] / np.sum(hmap), cist, color=c)
+        # TOPHAT

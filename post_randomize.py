@@ -21,7 +21,7 @@ SOURCE_MODEL=-2
 
 # --- DATA ---
 def load_hitmap(source_model, exposure, source_profile, bratio, name, root_path):
-    path = root_path + "/maps"
+    path = root_path + "/hitmaps"
 
     gind = source_model
     s0 = source_profile[0]
@@ -78,6 +78,7 @@ def parse_args():
     parser.add_argument("--dst", action="store_true")
     parser.add_argument("--mftc", action="store_true")
     parser.add_argument("--mftb", action="store_true")
+    parser.add_argument("--svt", action="store_true")
     return parser.parse_args()
 
 def main():
@@ -103,6 +104,7 @@ def main():
     MPT = False
     ECT = args.ect
     DST = args.dst
+    SVT = args.svt
 
 
     if MFTC:
@@ -145,6 +147,14 @@ def main():
         
         dst_nuc = []
         dst_pro = []
+    if SVT:
+        svt_angle = 16.5
+        svt = analysis.SmallScaleVarTest(svt_angle, args.nside)
+
+        svt_nuc_vs_nuc = []
+        svt_nuc_vs_pro = []
+        svt_pro_vs_nuc = []
+        svt_pro_vs_pro = []
 
 
     for hitmaps in tqdm.tqdm(zip(*iters), total=10000):
@@ -168,6 +178,10 @@ def main():
             c1low = dst.other_test(low_e_hitmap)
             c1high = dst.other_test(high_e_hitmap)
             dst_nuc.append((c1low, c1high))
+        if SVT:
+            nn, pp = svt.test(low_e_hitmap)
+            svt_nuc_vs_nuc.append(nn)
+            svt_nuc_vs_pro.append(pp)
 
 
 
@@ -192,6 +206,10 @@ def main():
             c1low = dst.other_test(low_e_hitmap)
             c1high = dst.other_test(high_e_hitmap)
             dst_pro.append((c1low, c1high))
+        if SVT:
+            nn, pp = svt.test(low_e_hitmap)
+            svt_pro_vs_nuc.append(nn)
+            svt_pro_vs_pro.append(pp)
 
 
 
@@ -246,6 +264,17 @@ def main():
 
         save_result(dst_nuc, args.exposure, args.source_model, source_profile, bratio, f"ds_e2e4", args.input_directory)
         save_result(dst_pro, args.exposure, 0, source_profile, bratio, f"ds_e2e4", args.input_directory)
+
+    if SVT:
+        svt_nuc_vs_nuc = np.array(svt_nuc_vs_nuc)
+        svt_nuc_vs_pro = np.array(svt_nuc_vs_pro)
+        svt_pro_vs_nuc = np.array(svt_pro_vs_nuc)
+        svt_pro_vs_pro = np.array(svt_pro_vs_pro)
+
+        save_result(svt_nuc_vs_nuc, args.exposure, -2, source_profile, bratio, "svnuc", args.input_directory)
+        save_result(svt_pro_vs_nuc, args.exposure, 0, source_profile, bratio, "svnuc", args.input_directory)
+        save_result(svt_nuc_vs_pro, args.exposure, -2, source_profile, bratio, "svpro", args.input_directory)
+        save_result(svt_pro_vs_pro, args.exposure, 0, source_profile, bratio, "svpro", args.input_directory)
 
     
 

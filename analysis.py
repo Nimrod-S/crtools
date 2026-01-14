@@ -1,4 +1,5 @@
 import numpy as np
+import scipy as sp
 import healpy as hp
 import matplotlib.pyplot as plt
 
@@ -362,17 +363,23 @@ class MultipolesTest:
         return m
     
 
-class SmallScaleVarTestXX:
-    def __init__(self, ang, exposure):
-        self._at = exposure
-        self._mask = zoa_mask(hp.npix2nside(len(exposure)))
+class SmallScaleVarTest:
+    def __init__(self, ang, nside):
+        self._mask = zoa_mask(nside)
 
         self._angle = ang
+        self._n = np.load("cr_output/means/iso_n.npy")
+        self._p = np.load("cr_output/means/iso_p.npy")
 
-    def test(self, hitmap, c):
+    def test(self, hitmap):
         hmap = hp.sphtfunc.smoothing(hitmap, sigma=self._angle * np.pi/180)
+        hmap /= np.sum(hmap)
 
-        hist, be = np.histogram(hmap, bins=np.linspace(0, max(hmap), int(max(hitmap))))
-        cist = np.cumsum(hist) / np.sum(hist)
-        plt.plot(be[:-1] / np.sum(hmap), cist, color=c)
+        nn = sp.stats.kstest(hmap, self._n).statistic
+        pp = sp.stats.kstest(hmap, self._p).statistic
+        return nn, pp
+
+        # hist, be = np.histogram(hmap, bins=np.linspace(0, max(hmap)))
+        # cist = np.cumsum(hist) / np.sum(hist)
+        # plt.plot(be[:-1] / np.sum(hmap), cist, color=c)
         # TOPHAT

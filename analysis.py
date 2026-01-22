@@ -363,6 +363,17 @@ class MultipolesTest:
         return m
     
 
+def ad(map, compmap):
+    n = len(map)
+    map.sort()
+    s = 0
+    j = 0
+    for i in range(n):
+        while (compmap[j] < map[i]) and (j < n):
+            j += 1
+        s += (2*i+1)/n*np.log(j/n) + (2*(n-1-i)+1)/n*np.log(1-j/n)
+    return -n-s
+
 class SmallScaleVarTest:
     def __init__(self, ang, nside, comp_n, comp_p):
         self._mask = zoa_mask(nside)
@@ -376,12 +387,23 @@ class SmallScaleVarTest:
         self._p = hp.sphtfunc.smoothing(self._p, sigma=self._angle * np.pi/180)
         self._p /= np.sum(self._p)
 
+        self._n.sort()
+        self._p.sort()
+
     def test(self, hitmap):
         hmap = hp.sphtfunc.smoothing(hitmap, sigma=self._angle * np.pi/180)
         hmap /= np.sum(hmap)
 
         nn = sp.stats.kstest(hmap, self._n).statistic
         pp = sp.stats.kstest(hmap, self._p).statistic
+        return nn, pp
+    
+    def test2(self, hitmap):
+        hmap = hp.sphtfunc.smoothing(hitmap, sigma=self._angle * np.pi/180)
+        hmap /= np.sum(hmap)
+
+        nn = ad(hmap, self._n)
+        pp = ad(hmap, self._p)
         return nn, pp
 
         # hist, be = np.histogram(hmap, bins=np.linspace(0, max(hmap)))

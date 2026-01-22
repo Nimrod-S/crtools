@@ -364,12 +364,17 @@ class MultipolesTest:
     
 
 class SmallScaleVarTest:
-    def __init__(self, ang, nside):
+    def __init__(self, ang, nside, comp_n, comp_p):
         self._mask = zoa_mask(nside)
 
         self._angle = ang
-        self._n = np.load("cr_output/means/iso_n.npy")
-        self._p = np.load("cr_output/means/iso_p.npy")
+
+        self._n = comp_n
+        self._n = hp.sphtfunc.smoothing(self._n, sigma=self._angle * np.pi/180)
+        self._n /= np.sum(self._n)
+        self._p = comp_p
+        self._p = hp.sphtfunc.smoothing(self._p, sigma=self._angle * np.pi/180)
+        self._p /= np.sum(self._p)
 
     def test(self, hitmap):
         hmap = hp.sphtfunc.smoothing(hitmap, sigma=self._angle * np.pi/180)

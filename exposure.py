@@ -12,8 +12,8 @@ class TerrestrialExposure:
         ximin = (np.cos(self._zenithmin) - np.sin(self._lat) * np.sin(dec)) / (np.cos(self._lat) * np.cos(dec))
         ximax = (np.cos(self._zenithmax) - np.sin(self._lat) * np.sin(dec)) / (np.cos(self._lat) * np.cos(dec))
 
-        amin = np.pi if ximin < -1 else 0 if ximin > 1 else np.acos(ximin)
-        amax = np.pi if ximax < -1 else 0 if ximax > 1 else np.acos(ximax)
+        amin = np.pi if ximin < -1 else 0 if ximin > 1 else np.arccos(ximin)
+        amax = np.pi if ximax < -1 else 0 if ximax > 1 else np.arccos(ximax)
 
         w = np.cos(self._lat) * np.cos(dec) * (np.sin(amax) - np.sin(amin)) + (amax - amin) * np.sin(self._lat) * np.sin(dec)
         return w #

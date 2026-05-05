@@ -51,6 +51,31 @@ def parse_auger_summaries(path):
 
     return data
 
+def parse_uhecr_data(path):
+    
+    full_name = path + '/' + "AugerApJS2022_Yr_JD_UTC_Th_Ph_RA_Dec_E_Expo.dat"
+    f = open(full_name)
+    lines = f.readlines()[1:] # Skip the header
+    f.close()
+
+    data = []
+    r = hp.Rotator(coord=['E', 'G'])
+    for line in lines:
+        fields = line.split()
+        data.append({
+            "id": int(0),
+            # "deV": 1e18 * float(event['sd_denergy']),
+            "ra": float(fields[5]),
+            "dec": float(fields[6]), # TODO: add angular uncertainty (only has it with phi,theta which are a third coordinate system altogether)
+            "eV": 1e18 * float(fields[7]),
+            "datetime": gpstime2date(int(fields[2])) # TODO wrongg this is actually UTC time
+        })
+        ra, dec = data[-1]['ra'], data[-1]['dec']
+        l, b = r(ra, dec, lonlat=True)
+        data[-1]['l'], data[-1]['b'] = l, b
+
+    return data
+
 # --- FILTER ---
 def energy_filter(data, emin, emax):
     # TODO consider energy uncertainty?
@@ -194,6 +219,7 @@ def plot_spec(data):
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--summary-path", "-s", help="path for summary dir", default="../summary")
+    parser.add_argument("--dataf-path", "-f", help="path for dataf dir", default="../fdata")
     parser.add_argument("--nside", "-n", help="nside for the healpix map", default=NSIDE)
     return parser.parse_args()
 
@@ -203,6 +229,21 @@ def main():
 
     data = parse_auger_summaries(args.summary_path)
 
+    atf = exposure.create_exposure_map(args.nside, "auger")
+    dataf = parse_uhecr_data(args.dataf_path)
+
+    mf = build_map(dataf, 'G', args.nside)
+    hp.mollview(mf)
+    plt.show()
+    return
+
+
+    comp_n = np.load("/mnt/x/uhecr/cr_output/meanmaps/auger/mean_v2_m-2_s-2_b1.npy")
+    comp_p = np.load("/mnt/x/uhecr/cr_output/meanmaps/auger/mean_v2_m0_s-2_b1.npy")
+    dmap = np.load("/mnt/x/uhecr/cr_output/deflections/defmat_1kpc32.npy")
+    svt = analysis.SmallScaleVarTest(dmap, 32, np.sum(comp_n[2:], axis=0), np.sum(comp_p[2:], axis=0), 0)
+    print(svt.test2(build_map(dataf, 'G', 32)))
+    return
     # plot_spec(energy_filter(data, 2e19, 2e21))
     # plt.xscale("log")
     # plt.yscale("log")
@@ -266,6 +307,12 @@ def main():
     m2 = build_map(data2, 'G', args.nside)
     
     print(sum(m))
+    mf = build_map(dataf, 'G', args.nside)
+    print(sum(mf))
+    hp.mollview(m)
+    hp.mollview(m2)
+    hp.mollview(mf)
+    plt.show()
 
     # print(analysis.test_smallvar(m, ))
     #print(f"!! {analysis.test_superg(m, 5, 55)}")

@@ -11,6 +11,20 @@ def zoa_mask(nside):
     npix = hp.nside2npix(nside)
     return np.where(in_zoa(np.arange(npix)))
 
+def zoa_mask2(nside):
+    def in_zoa(ipix):
+        lon, lat = hp.pix2ang(nside, ipix, lonlat=True)
+        return (np.abs(lat) < 20)
+    npix = hp.nside2npix(nside)
+    return np.where(in_zoa(np.arange(npix)))
+
+def zoa_maskc(nside, mlat):
+    def in_zoa(ipix):
+        lon, lat = hp.pix2ang(nside, ipix, lonlat=True)
+        return (np.abs(lat) < mlat)
+    npix = hp.nside2npix(nside)
+    return np.where(in_zoa(np.arange(npix)))
+
 
 class LocalVarianceTest:
     def __init__(self, ang, nside):
@@ -281,14 +295,16 @@ class BigMatchedFilterTest2:
 
 # Consider: import s2fft
 class SmallCorrelationTest:
-    def __init__(self, ang, nside):
+    def __init__(self, dmap, nside):
         self._mask = zoa_mask(nside)
-        self._angle = ang
+        self._dmap = dmap
         pass
     
     def test_against(self, hitmap1, hitmap2):
-        h1 = hp.sphtfunc.smoothing(hitmap1, sigma=self._angle * np.pi / 180)
-        h2 = hp.sphtfunc.smoothing(hitmap2, sigma=self._angle * np.pi / 180)
+        h1 = self._dmap @ hitmap1
+        h2 = self._dmap @ hitmap2
+        # h1 = hp.sphtfunc.smoothing(hitmap1, sigma=self._angle * np.pi / 180)
+        # h2 = hp.sphtfunc.smoothing(hitmap2, sigma=self._angle * np.pi / 180)
 
         # Getting rid of the milky way because gmf is too strong + catalog is problematic
         h1[self._mask] = 0
@@ -324,13 +340,13 @@ class SmallCorrelationTest:
     
 
 class MultipolesTest:
-    def __init__(self, ang, exposure):
+    def __init__(self, dmap, exposure):
         self._at = exposure
-        self._angle = ang
+        self._dmap = dmap
 
     def test(self, hitmap):
         # alm = hp.map2alm(hitmap)
-        hitmap2 = hp.sphtfunc.smoothing(hitmap, sigma=self._angle * np.pi / 180)
+        hitmap2 = self._dmap @ hitmap
         cl = hp.anafast(hitmap2)
         
         # if   h = h0 (1 + d cos (theta))
@@ -340,7 +356,7 @@ class MultipolesTest:
         return np.array([cl[1] / cl[0], cl[2] / cl[0]])
 
     def other_test(self, hitmap):
-        hitmap2 = hp.sphtfunc.smoothing(hitmap / self._at, sigma=self._angle * np.pi / 180)
+        hitmap2 = self._dmap @ hitmap / self._at
         # cl = hp.anafast(hitmap2)
         # return np.array([cl[1] / cl[0], cl[2] / cl[0]])
 
@@ -369,44 +385,52 @@ def ad(map, compmap):
     s = 0
     j = 0
     for i in range(n):
-        while (compmap[j] < map[i]) and (j < n):
+        while (j < n) and (compmap[j] < map[i]):
             j += 1
-        s += (2*i+1)/n*np.log(j/n) + (2*(n-1-i)+1)/n*np.log(1-j/n)
+        s += (2*i+1)/n*np.log((j+.2)/n) + (2*(n-1-i)+1)/n*np.log(1-(j-.2)/n)
     return -n-s
 
 class SmallScaleVarTest:
-    def __init__(self, ang, nside, comp_n, comp_p):
+    def __init__(self, dmap, nside, comp_n, comp_p, mlat):
         self._mask = zoa_mask(nside)
+        # self._mask = zoa_mask2(nside)
+        # self._mask = zoa_maskc(nside, mlat)
 
-        self._angle = ang
+        self._dmap = dmap
 
-        self._n = comp_n
-        self._n = hp.sphtfunc.smoothing(self._n, sigma=self._angle * np.pi/180)
+        self._n = dmap @ comp_n
+        self._n = np.delete(self._n, self._mask)
         self._n /= np.sum(self._n)
-        self._p = comp_p
-        self._p = hp.sphtfunc.smoothing(self._p, sigma=self._angle * np.pi/180)
+        self._p = dmap @ comp_p
+        self._p = np.delete(self._p, self._mask)
         self._p /= np.sum(self._p)
 
         self._n.sort()
         self._p.sort()
 
     def test(self, hitmap):
-        hmap = hp.sphtfunc.smoothing(hitmap, sigma=self._angle * np.pi/180)
+        hmap = self._dmap @ hitmap
+
+        hmap = np.delete(hmap, self._mask)
+
         hmap /= np.sum(hmap)
 
         nn = sp.stats.kstest(hmap, self._n).statistic
         pp = sp.stats.kstest(hmap, self._p).statistic
         return nn, pp
     
-    def test2(self, hitmap):
-        hmap = hp.sphtfunc.smoothing(hitmap, sigma=self._angle * np.pi/180)
+    def test2(self, hitmap, c='black'):
+        hmap = self._dmap @ hitmap
+
+        hmap = np.delete(hmap, self._mask)
+
         hmap /= np.sum(hmap)
 
         nn = ad(hmap, self._n)
         pp = ad(hmap, self._p)
         return nn, pp
 
-        # hist, be = np.histogram(hmap, bins=np.linspace(0, max(hmap)))
-        # cist = np.cumsum(hist) / np.sum(hist)
-        # plt.plot(be[:-1] / np.sum(hmap), cist, color=c)
+        hist, be = np.histogram(hmap, bins=np.linspace(0, max(hmap)))
+        cist = np.cumsum(hist) / np.sum(hist)
+        plt.plot(be[:-1] / np.sum(hmap), cist, color=c, alpha=.3)
         # TOPHAT

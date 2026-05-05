@@ -18,6 +18,17 @@ def define_simulation(modelname, modeltype=0, dist=30):
     simulation = ModuleList()
 
     if modelname == "UF23":
+        # model variations (see Tab.2 of UF23 paper)
+        # enum ModelType {
+        #     base,
+        #     neCL,
+        #     expX,
+        #     spur,
+        #     cre10,
+        #     synCG,
+        #     twistX,
+        #     nebCor
+        # };
         gmf = UF23FieldWrap(modeltype)
     elif modelname == "JF12":
         gmf = JF12Field()
@@ -29,8 +40,11 @@ def define_simulation(modelname, modeltype=0, dist=30):
 
     observer = Observer()
     observer.add(ObserverSurface(Sphere(Vector3d(0), dist * kpc)))
+    # observer.add(observerSurface())
 
-    simulation.add(observer)
+    # simulation.add(observer)
+    # simulation.add(SphericalBoundary(Vector3d(0, 0, 0), dist * kpc))
+    simulation.add(CylindricalBoundary(Vector3d(0, 0, 0), 2 * kpc, 20 * kpc))
     # Propagation type
 
     return simulation
@@ -58,19 +72,38 @@ def backtrace(sim, rays):
     
     return
 
-def proplens(simname, rig, nside):
+def backtracev(sim, rays, nside):
+    sim.run(rays)
+    ds = [ray.current.getDirection() for ray in rays]
+    trajs = [ray.getTrajectoryLength() / kpc for ray in rays]
+    return [hp.vec2pix(nside, d.x, d.y, d.z) for d in ds], trajs
+    return [hp.vec2ang(np.array([d.x, d.y, d.z])) for d in ds]
+
+def proplens(simname, rig, nside, modeltype=0):
     # Returns lens, so lens[pixel on earth]=pixel outside galaxy
     npix = hp.nside2npix(nside)
     angs0 = [hp.pix2ang(nside, ipix) for ipix in np.arange(npix)]
-    rays = [define_ray(rig, ang) for ang in angs0]
-
-    sim = define_simulation(simname)
     
-    lens = []
-    for ang in backtrace(sim, rays):
-        lens.append(hp.ang2pix(nside, *ang))
+    rays = CandidateVector()
+    for ang in angs0:
+        rays.push_back(CandidateRefPtr(define_ray(rig, ang)))
 
-    return np.array(lens)
+    sim = define_simulation(simname, modeltype=modeltype)
+    
+    return backtracev(sim, rays, nside)[0]
+
+def proplength(simname, rig, nside, modeltype=0):
+    # Returns lens, so lens[pixel on earth]=pixel outside galaxy
+    npix = hp.nside2npix(nside)
+    angs0 = [hp.pix2ang(nside, ipix) for ipix in np.arange(npix)]
+    
+    rays = CandidateVector()
+    for ang in angs0:
+        rays.push_back(CandidateRefPtr(define_ray(rig, ang)))
+
+    sim = define_simulation(simname, modeltype=modeltype)
+    
+    return backtracev(sim, rays, nside)[1]
 
 def ang2col(ang):
     th, ph = ang
@@ -143,9 +176,9 @@ def main():
     # a = list(backtrace(s, [r]))[0]
     # print(a)
 
-    fullskycolor(64, "ALL")
-    fullskycolor(64, "1")
-    fullskycolor(64, "2")
+    # fullskycolor(64, "ALL")
+    # fullskycolor(64, "1")
+    # fullskycolor(64, "2")
 
     return
 

@@ -14,9 +14,9 @@ import crpropa
 
 
 def get_results(args, name, exp, bias, model, sdens):
-    d = args.croutput_directory + "/results/"
+    d = args.croutput_directory + f"/results/{exp}/"
 
-    fname = f"{name}_{exp}_b{bias}_m{model}_s{sdens}.npy"
+    fname = f"{name}_b{bias}_m{model}_s{sdens}.npy"
 
     return np.load(d + fname)
 
@@ -221,6 +221,11 @@ def get_results_large_vs(args, t, b, exp, bias, model, sdens):
     bot = get_results(args, "mf"+b, exp, bias, model, sdens)
     return top - bot
 
+def get_results_small_vs(args, t, b, exp, bias, model, sdens):
+    top = get_results(args, "svD1_mid_"+t, exp, bias, model, sdens)
+    bot = get_results(args, "svD1_mid_"+b, exp, bias, model, sdens)
+    return top - bot
+
 def fig_large_results(args):
     # auger10 chem
     nuc2 = get_results_large_vs(args, "nuc", "pro", "auger10", 1, -2, -2)
@@ -251,8 +256,8 @@ def fig_large_results(args):
     plt.hist(pro2, density=True, alpha=.25, bins=bns, color='C3', label='protons, $b_1=1$')
     plt.hist(nuchigh, density=True, alpha=.6, bins=bns, color='C0', histtype='step', linewidth=2, label='nuclei, $b_1=1.7$')
     plt.hist(prohigh, density=True, alpha=.6, bins=bns, color='C3', histtype='step', linewidth=2, label='protons, $b_1=1.7$')
-    # plt.hist(nuclow, density=True, alpha=.6, bins=bns, color='C0', histtype='step', linewidth=2, linestyle=":", label='nuclei, $b_1=0$')
-    # plt.hist(prolow, density=True, alpha=.6, bins=bns, color='C3', histtype='step', linewidth=2, linestyle=":", label='protons, $b_1=0$')
+    plt.hist(nuclow, density=True, alpha=.6, bins=bns, color='C0', histtype='step', linewidth=2, linestyle=":", label='nuclei, $b_1=0$')
+    plt.hist(prolow, density=True, alpha=.6, bins=bns, color='C3', histtype='step', linewidth=2, linestyle=":", label='protons, $b_1=0$')
     
     plt.ylabel("p.d.f")
     plt.xlabel("$T$")
@@ -362,7 +367,236 @@ def fig_large_results(args):
 
     plt.show()
 
+def fig_small_mag(args):
+    nuc = get_results_small_vs(args, "nuc", "pro", "2022", 1, -2, -2)
+    pro = get_results_small_vs(args, "nuc", "pro", "2022", 1, 0, -2)
 
+    bns = np.linspace(min(nuc), max(pro))
+
+    # value = 76.9648166415027 - 6.367164550279995 # old def
+    # value = 115.17208710215527 - 109.99799606832312 # 20ev def
+    # value = 116.39946417065039 - 81.18456190681536 # 32ev def
+
+    value = np.float64(27683.819467027555) - np.float64(26556.291798280654) # 32ev
+
+    value = 48.38093733900314 - 94.98215176451049 # with 20 mask
+    value = np.float64(116.39946417065039) - np.float64(81.18456190681536) # with 0 mask
+    # value = np.float64(94.01456236287595) - np.float64(80.57173047770266) # with neutral mask
+
+    print(np.sum(nuc > value)/10000)
+    print(np.sum(pro < value)/10000)
+    
+    plt.title(r"$s_0=10^{-2} \text{Mpc}^{-3}$")
+
+    plt.hist(nuc, density=True, alpha=.25, bins=bns, color='C0', label='nuclei')
+    plt.hist(pro, density=True, alpha=.25, bins=bns, color='C3', label='protons')
+
+    for m in range(8):
+        nucm = get_results_small_vs(args, f"nuc_U{m}", f"pro_U{m}", "2022", 1, -2, -2)
+        prom = get_results_small_vs(args, f"nuc_U{m}", f"pro_U{m}", "2022", 1, 0, -2)
+ 
+        plt.hist(nucm, density=True, bins=bns, color='C0', alpha=1-.1*m, label=f'nuclei, m={m}', histtype='step', linewidth=2)
+        plt.hist(prom, density=True, bins=bns,  color='C3', alpha=1-.1*m, label=f'protons, m={m}', histtype='step', linewidth=2)
+
+        print(f"MODEL {m}")
+        print(np.sum(nucm > value)/10000)
+        print(np.sum(prom < value)/10000)
+
+    plt.ylabel("p.d.f")
+    plt.xlabel("$T$")
+    plt.vlines(value, 0, 1e-2, color='black', linestyle='--')
+    # plt.legend()
+    plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+    plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+
+    plt.show()
+
+def fig_small_results(args):
+    # auger chem
+    nuc2 = get_results_small_vs(args, "nuc", "pro", "auger", 1, -2, -2)
+    pro2 = get_results_small_vs(args, "nuc", "pro", "auger", 1, 0, -2)
+    nuchigh = get_results_small_vs(args, "nuc", "pro", "auger", 1.7, -2, -2)
+    nuclow = get_results_small_vs(args, "nuc", "pro", "auger", 0, -2, -2)
+    prohigh = get_results_small_vs(args, "nuc", "pro", "auger", 1.7, 0, -2)
+    prolow = get_results_small_vs(args, "nuc", "pro", "auger", 0, 0, -2)
+    nuc3 = get_results_small_vs(args, "nuc", "pro", "auger", 1, -2, -3)
+    pro3 = get_results_small_vs(args, "nuc", "pro", "auger", 1, 0, -3)
+    nuc3high = get_results_small_vs(args, "nuc", "pro", "auger", 1.7, -2, -3)
+    pro3high = get_results_small_vs(args, "nuc", "pro", "auger", 1.7, 0, -3)
+    nuc4 = get_results_small_vs(args, "nuc", "pro", "auger", 1, -2, -4)
+    pro4 = get_results_small_vs(args, "nuc", "pro", "auger", 1, 0, -4)
+    nuc4high = get_results_small_vs(args, "nuc", "pro", "auger", 1.7, -2, -4)
+    pro4high = get_results_small_vs(args, "nuc", "pro", "auger", 1.7, 0, -4)
+
+    # nuclow = get_results_small_vs(args, "nuc_U", "pro_U", "auger", 1, -2, -2)
+    # prolow = get_results_small_vs(args, "nuc_U", "pro_U", "auger10", 1, 0, -2)
+
+    value = 76.9648166415027 - 6.367164550279995
+    # value = 115.17208710215527 - 109.99799606832312
+    # value = 116.39946417065039 - 81.18456190681536 # 32ev dev
+
+    value = np.float64(27683.819467027555) - np.float64(26556.291798280654) # 32ev
+
+    value = 48.38093733900314 - 94.98215176451049 # new def
+
+    print(np.std(nuc2), np.mean(nuc2))
+
+    # print(min(nuc2), max(nuc2))
+    # print(min(pro2), max(pro2))
+    # print(min(nuchigh), max(nuchigh))
+    # print(min(nuclow), max(nuclow))
+    # print(min(prohigh), max(prohigh))
+    # print(min(prolow), max(prolow))
+    # print(min(nuc3), max(nuc3))
+    # print(min(pro3), max(pro3))
+    # print(min(nuc3high), max(nuc3high))
+    # print(min(pro3high), max(pro3high))
+    # print(min(nuc4), max(nuc4))
+    # print(min(pro4), max(pro4))
+    # print(min(nuc4high), max(nuc4high))
+    # print(min(pro4high), max(pro4high))
+
+    bns = np.linspace(min(nuchigh), max(prolow))
+
+    plt.subplot(131)
+    plt.title(r"$s_0=10^{-2} \text{Mpc}^{-3}$")
+
+    plt.hist(nuc2, density=True, alpha=.25, bins=bns, color='C0', label='nuclei, $b_1=1$')
+    plt.hist(pro2, density=True, alpha=.25, bins=bns, color='C3', label='protons, $b_1=1$')
+    plt.hist(nuchigh, density=True, alpha=.6, bins=bns, color='C0', histtype='step', linewidth=2, label='nuclei, $b_1=1.7$')
+    plt.hist(prohigh, density=True, alpha=.6, bins=bns, color='C3', histtype='step', linewidth=2, label='protons, $b_1=1.7$')
+    plt.hist(nuclow, density=True, alpha=.6, bins=bns, color='C0', histtype='step', linewidth=2, linestyle=":", label='nuclei, $b_1=0$')
+    plt.hist(prolow, density=True, alpha=.6, bins=bns, color='C3', histtype='step', linewidth=2, linestyle=":", label='protons, $b_1=0$')
+    
+    plt.ylabel("p.d.f")
+    plt.xlabel("$T$")
+    plt.vlines(value, 0, 4e-3, color='black', linestyle='--')
+    plt.legend()
+    plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+    plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+
+    plt.subplot(132)
+    plt.title(r"$s_0=10^{-3} \text{Mpc}^{-3}$")
+
+    plt.hist(nuc3, density=True, alpha=.25, bins=bns, color='C0', label='nuclei, $b_1=1$')
+    plt.hist(pro3, density=True, alpha=.25, bins=bns, color='C3', label='protons, $b_1=1$')
+    plt.hist(nuc3high, density=True, alpha=.6, bins=bns, color='C0', histtype='step', linewidth=2, label='nuclei, $b_1=1.7$')
+    plt.hist(pro3high, density=True, alpha=.6, bins=bns, color='C3', histtype='step', linewidth=2, label='protons, $b_1=1.7$')
+
+    plt.ylabel("p.d.f")
+    plt.xlabel("$T$")
+    plt.vlines(value, 0, 4e-3, color='black', linestyle='--')
+    plt.legend()
+    plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+    plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+
+    plt.subplot(133)
+    plt.title(r"$s_0=10^{-4} \text{Mpc}^{-3}$")
+
+    plt.hist(nuc4, density=True, alpha=.25, bins=bns, color='C0', label='nuclei, $b_1=1$')
+    plt.hist(pro4, density=True, alpha=.25, bins=bns, color='C3', label='protons, $b_1=1$')
+    plt.hist(nuc4high, density=True, alpha=.6, bins=bns, color='C0', histtype='step', linewidth=2, label='nuclei, $b_1=1.7$')
+    plt.hist(pro4high, density=True, alpha=.6, bins=bns, color='C3', histtype='step', linewidth=2, label='protons, $b_1=1.7$')
+
+    plt.ylabel("p.d.f")
+    plt.xlabel("$T$")
+    plt.vlines(value, 0, 4e-3, color='black', linestyle='--')
+    plt.legend()
+    plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+    plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+
+    plt.show()
+    return
+    # 2022 chem
+    nuc2 = get_results_small_vs(args, "nuc", "pro", "2022", 1, -2, -2)
+    pro2 = get_results_small_vs(args, "nuc", "pro", "2022", 1, 0, -2)
+    nuchigh = get_results_small_vs(args, "nuc", "pro", "2022", 1.7, -2, -2)
+    prohigh = get_results_small_vs(args, "nuc", "pro", "2022", 1.7, 0, -2)
+    nuclow = get_results_small_vs(args, "nuc", "pro", "2022", 0, -2, -2)
+    prolow = get_results_small_vs(args, "nuc", "pro", "2022", 0, 0, -2)
+    nuc3 = get_results_small_vs(args, "nuc", "pro", "2022", 1, -2, -3)
+    pro3 = get_results_small_vs(args, "nuc", "pro", "2022", 1, 0, -3)
+    nuc3high = get_results_small_vs(args, "nuc", "pro", "2022", 1.7, -2, -3)
+    pro3high = get_results_small_vs(args, "nuc", "pro", "2022", 1.7, 0, -3)
+    nuc4 = get_results_small_vs(args, "nuc", "pro", "2022", 1, -2, -4)
+    pro4 = get_results_small_vs(args, "nuc", "pro", "2022", 1, 0, -4)
+    nuc4high = get_results_small_vs(args, "nuc", "pro", "2022", 1.7, -2, -4)
+    pro4high = get_results_small_vs(args, "nuc", "pro", "2022", 1.7, 0, -4)
+
+    # WOW
+    nuclow = get_results_small_vs(args, "nuc_U", "pro_U", "2022", 1, -2, -2)
+    prolow = get_results_small_vs(args, "nuc_U", "pro_U", "2022", 1, 0, -2)
+
+    # bns = np.linspace(min(prolow), max(nuchigh))
+    bns = np.linspace(min(nuchigh), max(pro4))
+
+    plt.figure()
+    plt.subplot(131)
+    plt.title(r"$s_0=10^{-2} \text{Mpc}^{-3}$")
+
+    plt.hist(nuc2, density=True, alpha=.25, bins=bns, color='C0', label='nuclei, $b_1=1$')
+    plt.hist(pro2, density=True, alpha=.25, bins=bns, color='C3', label='protons, $b_1=1$')
+    plt.hist(nuchigh, density=True, alpha=.6, bins=bns, color='C0', histtype='step', linewidth=2, label='nuclei, $b_1=1.7$')
+    plt.hist(prohigh, density=True, alpha=.6, bins=bns, color='C3', histtype='step', linewidth=2, label='protons, $b_1=1.7$')
+    plt.hist(nuclow, density=True, alpha=.6, bins=bns, color='C0', histtype='step', linewidth=2, linestyle=":", label='nuclei, $b_1=0$')
+    plt.hist(prolow, density=True, alpha=.6, bins=bns, color='C3', histtype='step', linewidth=2, linestyle=":", label='protons, $b_1=0$')
+    
+    plt.ylabel("p.d.f")
+    plt.xlabel("$T$")
+    plt.legend()
+    plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+    plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+        
+    plt.subplot(132)
+    plt.title(r"$s_0=10^{-3} \text{Mpc}^{-3}$")
+
+    bns = np.linspace(min(pro3), max(nuc3high))
+    bns = np.linspace(min(nuc3high), max(pro3))
+
+    plt.hist(nuc3, density=True, alpha=.25, bins=bns, color='C0', label='nuclei, $b_1=1$')
+    plt.hist(pro3, density=True, alpha=.25, bins=bns, color='C3', label='protons, $b_1=1$')
+    plt.hist(nuc3high, density=True, alpha=.6, bins=bns, color='C0', histtype='step', linewidth=2, label='nuclei, $b_1=1.7$')
+    plt.hist(pro3high, density=True, alpha=.6, bins=bns, color='C3', histtype='step', linewidth=2, label='protons, $b_1=1.7$')
+    
+    plt.ylabel("p.d.f")
+    plt.xlabel("$T$")
+    plt.legend()
+    plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+    plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+
+    # 2022
+    plt.subplot(133)
+    plt.title(r"$s_0=10^{-4} \text{Mpc}^{-3}$")
+
+    bns = np.linspace(min(nuc4), max(pro4))
+
+    plt.hist(nuc4, density=True, alpha=.25, bins=bns, color='C0', label='nuclei, $b_1=1$')
+    plt.hist(pro4, density=True, alpha=.25, bins=bns, color='C3', label='protons, $b_1=1$')
+    plt.hist(nuc4high, density=True, alpha=.6, bins=bns, color='C0', histtype='step', linewidth=2, label='nuclei, $b_1=1.7$')
+    plt.hist(pro4high, density=True, alpha=.6, bins=bns, color='C3', histtype='step', linewidth=2, label='protons, $b_1=1.7$')
+
+    plt.ylabel("p.d.f")
+    plt.xlabel("$T$")
+    plt.legend()
+    plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+    plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+
+    plt.figure()
+    nuclow = get_results_small_vs(args, "Anuc_U", "Apro_U", "2022", 1, -2, -2)
+    prolow = get_results_small_vs(args, "Anuc_U", "Apro_U", "2022", 1, 0, -2)
+    bns = np.linspace(min(nuclow), max(prolow))
+    plt.hist(nuclow, density=True, alpha=.6, bins=bns, color='C0', histtype='step', linewidth=2, linestyle=":", label='nuclei, $b_1=0$')
+    plt.hist(prolow, density=True, alpha=.6, bins=bns, color='C3', histtype='step', linewidth=2, linestyle=":", label='protons, $b_1=0$')
+
+    plt.figure()
+    nuclow = get_results_small_vs(args, "nuc_U", "pro_U", "auger10", 1, -2, -2)
+    prolow = get_results_small_vs(args, "nuc_U", "pro_U", "auger10", 1, 0, -2)
+    bns = np.linspace(min(nuclow), max(prolow))
+    plt.hist(nuclow, density=True, alpha=.6, bins=bns, color='C0', histtype='step', linewidth=2, linestyle=":", label='nuclei, $b_1=0$')
+    plt.hist(prolow, density=True, alpha=.6, bins=bns, color='C3', histtype='step', linewidth=2, linestyle=":", label='protons, $b_1=0$')
+
+
+    plt.show()
 
 def fig_energy_results(args):
     # Auger10
@@ -450,6 +684,9 @@ def fig_swing_results(args):
     prohigh = [vang(v) for v in get_results(args, "ds_e2e4", "2022", 1.7, 0, -2)]
     nuc4high = [vang(v) for v in get_results(args, "ds_e2e4", "2022", 1.7, -2, -4)]
     pro4high = [vang(v) for v in get_results(args, "ds_e2e4", "2022", 1.7, 0, -4)]
+    # WARNING COOL
+    nuchigh = [vang(v) for v in get_results(args, "ds_U_e2e4", "2022", 1, -2, -2)]
+    prohigh = [vang(v) for v in get_results(args, "ds_U_e2e4", "2022", 1, 0, -2)]
     
     nuclow = [vang(v) for v in get_results(args, "ds_e2e4", "2022", 0, -2, -2)]
     
@@ -559,7 +796,7 @@ def fig_lvt_results(args):
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-directory", "-data", help="path with interaction data", default="../CRPropa3/build/data")
-    parser.add_argument("--croutput-directory", "-cr", help="path with files", default="../cr_output")
+    parser.add_argument("--croutput-directory", "-cr", help="path with files", default="/mnt/x/uhecr/cr_output")
     return parser.parse_args()
 
 def main():
@@ -569,10 +806,11 @@ def main():
 
     # fig_mfp_comparisons(args)
     # fig_contours()
-    fig_rigidity()
+    # fig_rigidity()
     # fig_distances()
 
-    # fig_large_results(args)
+    # fig_small_results(args)
+    fig_small_mag(args)
     # fig_energy_results(args)
     # fig_swing_results(args)
     # fig_lvt_results(args)

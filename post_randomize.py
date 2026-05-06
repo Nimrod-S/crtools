@@ -86,6 +86,9 @@ def parse_args():
     parser.add_argument("--source-evolution", "-se", help="source evolution index", type=float, default=0.0)
     parser.add_argument("--bias", "-b", choices=['iso', 'neutral', 'high'], help="source distribution bias to 2MRS", default='neutral')
     parser.add_argument("--input-directory", "-i", help="path with randomize_rays.py results", default="./cr_output")
+    
+    parser.add_argument("--gmf", "-g", type=int)
+    parser.add_argument("--ecal", "-c", type=int, default=2)
 
     parser.add_argument("--lvt", action="store_true")
     parser.add_argument("--ect", action="store_true")
@@ -103,14 +106,14 @@ def main():
     bratio = {"iso": 0, "neutral": 1, "high": 1.7}[args.bias]
 
     source_profile = (np.power(10, args.source_density), args.source_evolution, bratio)
-    es = np.linspace(2e19, 8e19, 7)
-    es[-1] = 2e22
-    iters = []
-    iters_pro = []
-    for e in es[:-1]:
-        iters.append(iter(load_hitmap(args.source_model, args.exposure, source_profile, f"e{int(e / 1e19)}_U", args.input_directory)))
-        iters_pro.append(iter(load_hitmap(0, args.exposure, source_profile, f"e{int(e / 1e19)}_U", args.input_directory)))
+    es = np.load(args.input_directory+"/flux/energies_v2.npy")
 
+    magname = "" if args.gmf is None else f"_U{args.gmf}"
+
+    iters_nuc = iter(load_hitmap(args.source_model, args.exposure, source_profile, f"v2"+magname, args.input_directory))
+    iters_pro = iter(load_hitmap(0, args.exposure, source_profile, f"v2"+magname, args.input_directory))
+
+    defmat = np.load(args.input_directory + f"/deflections/defmat_1kpc32{magname}.npy")
 
     MFTC = args.mftc
     MFTB = args.mftb
@@ -149,23 +152,23 @@ def main():
         mpt_nuc = []
         mpt_pro = []
     if ECT:
-        ect_angle = 16.5
-        ect = analysis.SmallCorrelationTest(ect_angle, args.nside)
+        ect_angle = "D5"
+        ect = analysis.SmallCorrelationTest(defmat, args.nside)
 
         ect_nuc = []
         ect_pro = []
     if DST:
-        dst_angle = 16.5
-        dst = analysis.MultipolesTest(dst_angle, at)
+        dst_angle = "D5"
+        dst = analysis.MultipolesTest(defmat, at)
         
         dst_nuc = []
         dst_pro = []
     if SVT:
-        compare_n = [load_meanmap(-2, args.exposure, (1e-2, 0, 1), f"e{int(e / 1e19)}", args.input_directory) for e in es[:-1]]
-        compare_p = [load_meanmap(0, args.exposure, (1e-2, 0, 1), f"e{int(e / 1e19)}", args.input_directory) for e in es[:-1]]
+        compare_n = load_meanmap(-2, args.exposure, (1e-2, 0, 1), f"v2", args.input_directory)
+        compare_p = load_meanmap(0, args.exposure, (1e-2, 0, 1), f"v2", args.input_directory)
 
-        svt_angle = 16.5
-        svt = analysis.SmallScaleVarTest(svt_angle, args.nside, sum(compare_n), sum(compare_p))
+        svt_angle = "D5"
+        svt = analysis.SmallScaleVarTest(defmat, args.nside, np.sum(compare_n[args.ecal:], axis=0), np.sum(compare_p[args.ecal:], axis=0))
 
         svt_nuc_vs_nuc = []
         svt_nuc_vs_pro = []
@@ -174,9 +177,7 @@ def main():
 
 
     #for hitmaps in tqdm.tqdm(zip(*iters), total=10000):
-    for hitmaps in zip(*iters):
-        low_e_hitmap = sum(hitmaps)
-
+    for hitmaps in iters_nuc:
         if MFTC:
             nuc_vs_nuc.append(mfnuc.test(low_e_hitmap))
             nuc_vs_pro.append(mfpro.test(low_e_hitmap))
@@ -188,23 +189,27 @@ def main():
         if MPT:
             mpt_nuc.append(mpt.test(low_e_hitmap))
         if ECT:
-            high_e_hitmap = sum(hitmaps[2:])
-            ect_nuc.append(ect.test_against(low_e_hitmap, high_e_hitmap))
+            lowmap = np.sum(hitmaps[args.ecal:args.ecal+2], axis=0)
+            highmap = np.sum(hitmaps[args.ecal+2:], axis=0)
+            ect_nuc.append(ect.test_against(lowmap, highmap))
         if DST:
-            high_e_hitmap = sum(hitmaps[2:])
-            c1low = dst.other_test(low_e_hitmap)
-            c1high = dst.other_test(high_e_hitmap)
+            lowmap = np.sum(hitmaps[0:4], axis=0)
+            highmap = np.sum(hitmaps[4:], axis=0)
+
+            c1low = dst.other_test(lowmap)
+            c1high = dst.other_test(highmap)
             dst_nuc.append((c1low, c1high))
         if SVT:
-            nn, pp = svt.test(low_e_hitmap)
+            midmap = np.sum(hitmaps[args.ecal:], axis=0)
+
+            nn, pp = svt.test2(midmap)
             svt_nuc_vs_nuc.append(nn)
             svt_nuc_vs_pro.append(pp)
 
 
 
     #for hitmaps in tqdm.tqdm(zip(*iters_pro), total=10000):
-    for hitmaps in zip(*iters_pro):
-        low_e_hitmap = sum(hitmaps)
+    for hitmaps in iters_pro:
 
         if MFTC:
             pro_vs_nuc.append(mfnuc.test(low_e_hitmap))
@@ -217,18 +222,22 @@ def main():
         if MPT:
             mpt_pro.append(mpt.test(low_e_hitmap))
         if ECT:
-            high_e_hitmap = sum(hitmaps[2:])
-            ect_pro.append(ect.test_against(low_e_hitmap, high_e_hitmap))
+            lowmap = np.sum(hitmaps[args.ecal:args.ecal+2], axis=0)
+            highmap = np.sum(hitmaps[args.ecal+2:], axis=0)
+            ect_pro.append(ect.test_against(lowmap, highmap))
         if DST:
-            high_e_hitmap = sum(hitmaps[2:])
-            c1low = dst.other_test(low_e_hitmap)
-            c1high = dst.other_test(high_e_hitmap)
+            lowmap = np.sum(hitmaps[0:4], axis=0)
+            highmap = np.sum(hitmaps[4:], axis=0)
+
+            c1low = dst.other_test(lowmap)
+            c1high = dst.other_test(highmap)
             dst_pro.append((c1low, c1high))
         if SVT:
-            nn, pp = svt.test(low_e_hitmap)
+            midmap = np.sum(hitmaps[args.ecal:], axis=0)
+
+            nn, pp = svt.test2(midmap)
             svt_pro_vs_nuc.append(nn)
             svt_pro_vs_pro.append(pp)
-
 
 
     if MFTC:
@@ -273,15 +282,17 @@ def main():
         ect_nuc = np.array(ect_nuc)
         ect_pro = np.array(ect_pro)
 
-        save_result(ect_nuc, args.exposure, args.source_model, source_profile, f"ec{ect_angle}_U_e2e4", args.input_directory)
-        save_result(ect_pro, args.exposure, 0, source_profile, f"ec{ect_angle}_U_e2e4", args.input_directory)
+        txt = {2: "mid", 1: "low", 3: "high"}[args.ecal]
+
+        save_result(ect_nuc, args.exposure, args.source_model, source_profile, f"ec{ect_angle}_{txt}"+magname, args.input_directory)
+        save_result(ect_pro, args.exposure, 0, source_profile, f"ec{ect_angle}_{txt}"+magname, args.input_directory)
 
     if DST:
         dst_nuc = np.array(dst_nuc)
         dst_pro = np.array(dst_pro)
 
-        save_result(dst_nuc, args.exposure, args.source_model, source_profile, f"ds_U_e2e4", args.input_directory)
-        save_result(dst_pro, args.exposure, 0, source_profile, f"ds_U_e2e4", args.input_directory)
+        save_result(dst_nuc, args.exposure, args.source_model, source_profile, f"ds_e2e42"+magname, args.input_directory)
+        save_result(dst_pro, args.exposure, 0, source_profile, f"ds_e2e42"+magname, args.input_directory)
 
     if SVT:
         svt_nuc_vs_nuc = np.array(svt_nuc_vs_nuc)
@@ -289,10 +300,12 @@ def main():
         svt_pro_vs_nuc = np.array(svt_pro_vs_nuc)
         svt_pro_vs_pro = np.array(svt_pro_vs_pro)
 
-        save_result(svt_nuc_vs_nuc, args.exposure, -2, source_profile, "svnuc_U", args.input_directory)
-        save_result(svt_pro_vs_nuc, args.exposure, 0, source_profile, "svnuc_U", args.input_directory)
-        save_result(svt_nuc_vs_pro, args.exposure, -2, source_profile, "svpro_U", args.input_directory)
-        save_result(svt_pro_vs_pro, args.exposure, 0, source_profile, "svpro_U", args.input_directory)
+        txt = {2: "mid", 1: "low", 3: "high"}[args.ecal]
+
+        save_result(svt_nuc_vs_nuc, args.exposure, -2, source_profile, f"sv{svt_angle}_{txt}_nuc"+magname, args.input_directory)
+        save_result(svt_pro_vs_nuc, args.exposure, 0, source_profile, f"sv{svt_angle}_{txt}_nuc"+magname, args.input_directory)
+        save_result(svt_nuc_vs_pro, args.exposure, -2, source_profile, f"sv{svt_angle}_{txt}_pro"+magname, args.input_directory)
+        save_result(svt_pro_vs_pro, args.exposure, 0, source_profile, f"sv{svt_angle}_{txt}_pro"+magname, args.input_directory)
 
     
 

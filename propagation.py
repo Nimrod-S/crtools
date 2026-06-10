@@ -175,6 +175,19 @@ def get_r_dist(e0, rs, source_model):
         dist[np.where(rs * z <= e0)] = 0
     return dist * j
 
+def get_mean_r(es, source_model):
+    if source_model == -2:
+        rig = np.linspace(10 ** 17.5, 10 ** 19.4, 3000)
+        rsa = [get_r_dist(e, rig, -2) for e in es]
+        rsad = [rsa[i+1] - rsa[i] for i in range(len(es)-1)]
+        raa = [np.sum(rig * rs) / np.sum(rs) for rs in rsad]
+        return np.array(raa)
+    elif source_model == 0:
+        rsp = [e for e in es]
+        rap = [(rsp[i+1] + rsp[i]) * 0.5 for i in range(len(es) -1)]
+        return rap
+
+
 # --- PROPAGATION - PROTONS ---
 ECEP=2.7e18
 T0EP=3.4e9
@@ -290,6 +303,10 @@ def main():
     es = np.linspace(2e19, 8e19, 7)
     es[-1] = 2e22
 
+    # Add 27.5 EeV, 32 EeV, 36.5 EeV
+    es = np.array([27.5e18, 32e18, 36.5e18, 2e22])
+    es = np.array([20e18, 27.5e18, 32e18, 36.5e18, 42e18, 47.9e18, 50e18, 60e18, 70e18, 2e22])
+
     dndrs = []
     dndrs_pro = []
 
@@ -300,9 +317,9 @@ def main():
     dndrs = np.array(dndrs)
     dndrs_pro = np.array(dndrs_pro)
     
-    np.save(args.output_directory+"/flux/energies_v1", np.array(es))
-    np.save(args.output_directory+"/flux/flux_nuc_v1", dndrs)
-    np.save(args.output_directory+"/flux/flux_pro_v1", dndrs_pro)
+    np.save(args.output_directory+"/flux/energies_v2", np.array(es))
+    np.save(args.output_directory+"/flux/flux_nuc_v2", dndrs)
+    np.save(args.output_directory+"/flux/flux_pro_v2", dndrs_pro)
 
 
 if __name__ == "__main__":

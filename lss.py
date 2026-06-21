@@ -196,7 +196,7 @@ def create_source_bias_map_mrsl(catalog_path, correction_path, nside, zs, min_ca
 
             hpmaps[i] = hp.sphtfunc.smoothing(hpmaps[i], sigma=lmean / dl)
 
-            # Rarely, numerical artifacts of the smoothing produces some negative values. From experience they are all <1e-4 of the mean so this is probably not that bad. We HAVE to fix it or the poisson distributions will get messed up later. TODO
+            # Rarely, numerical artifacts of the smoothing produces some negative values. From experience they are all <1e-4 of the mean so this is probably not that bad. We HAVE to fix it or the poisson distributions will get messed up later.
             hpmaps[i] = np.maximum(hpmaps[i], 0)
 
             hpmaps[i] /= dl ** 2 * sangle

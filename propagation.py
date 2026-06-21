@@ -11,11 +11,11 @@ MP = .938e9
 
 # --- PROPAGATION - NUCLEI ---
 
+#F = [0.005, 2/2, 9.46, 10.31, 1.2] # F[4]=38/37
+#F = [0.0095, 2/2, 9.46, 10.31, 1.027] # F[4]=38/37 OLD ATTEMPT
 
-F = [0.005, 2/2, 9.46, 10.31, 1.2] # F[4]=38/37
-F = [0.0095, 2/2, 9.46, 10.31, 1.027] # F[4]=38/37
+F = [0.0095, 2/2, 9.5, 10.3, 4/3]
 
-F = [0.0095, 2/2, 9.5, 10.3, 4/3] # F[4]=38/37
 def mfp1(a, g):
     a_factor = F[0] * np.power((a/56), -F[1])
     lg = np.log10(g)
@@ -27,7 +27,7 @@ def mfp1(a, g):
 def d1(a, g, e0):
     return a * mfp1(a, g) * (np.log(a * g * MP) - np.log(e0))
 
-DP = mfp.DataParser("/home/nimrod/physics/uhecr/CRPropa3/build/data")
+DP = mfp.DataParser("./CRPropa3/build/data")
 def mfp2(a, g):
     return DP.mfp(a, g)
 
@@ -61,25 +61,14 @@ def maxd(e0, a):
 
     gm = np.select(
         [e0 < thresh_low, e0 < thresh_high, e0 >= thresh_high],
-        [e0 * np.exp(1/F[4]) / (a * MP), 10**F[2], 10**F[2]] # INCOMPLETE
+        [e0 * np.exp(1/F[4]) / (a * MP), 10**F[2], 10**F[2]] # TODO INCOMPLETE
     )
 
     return gm, d1(a, gm, e0)
 
 
-def f(x):
-    # if x < 1:
-    #     return x ** 2 * np.e
-    # else:
-    return x ** 2 * np.exp(-x**1)
-    
-
-
 def dndr(d, a, lowa, higha, gind, econvert, es, ds):
     # TODO maybe clean up some of the econvert stuff to make it more clear
-    # STUPID
-    # if a == 14 and es[0] > 10**19.7:
-    #     return 0
     startidx, stopidx = np.argmax(ds > d), len(ds) - 1 - np.argmax(ds[::-1] > d)
     if startidx == 0 and ds[0] <= d:
         return 0
@@ -105,14 +94,11 @@ def dndr(d, a, lowa, higha, gind, econvert, es, ds):
         return exp1(x1) - exp1(x2)
     else:
         return (sp.special.gammainc(1 - gind, x2) - sp.special.gammainc(1 - gind, x1)) * sp.special.gamma(1-gind)
-        print("Oh no")
-        return None
 
 
 def calc_cosmic_ray_rate_density(e0min, e0max, zs, source_model, lowa=0, higha=0):
     if source_model == 0: # TODO make this less hack-y
-        #return calc_cosmic_ray_rate_density_proton(e0min, e0max, zs, get_source_parameters(source_model))
-        return calc_cosmic_ray_rate_density_bonus(e0min, e0max, zs)
+        return calc_cosmic_ray_rate_density_protons(e0min, e0max, zs)
 
     gind, rc, zA, iA, j = get_source_parameters(source_model)
 
@@ -146,10 +132,10 @@ def calc_cosmic_ray_rate_density(e0min, e0max, zs, source_model, lowa=0, higha=0
             
             dndrs_borders[a].append(j * iA[a] * np.array([dndr(d, a, lowa, higha, gind, econvert, source_es, source_ds) / econvert for d in ds]))
 
-    if (14 in dndrs_borders.keys()) and np.log10(e0min) > 19.6 and np.log10(e0min) < 19.7:
+    # if (14 in dndrs_borders.keys()) and np.log10(e0min) > 19.6 and np.log10(e0min) < 19.7:
         # plt.figure()
         # plt.title(e0min)
-        i = np.where(ds < 200)
+        # i = np.where(ds < 200)
         # plt.plot(ds[i], dndrs_borders[14][0][i])
         
 
@@ -200,7 +186,7 @@ def qev(e, z):
     return (np.power((e / 10 ** 19.6), -0.5) * np.power(1 + z, 3) * 0.6e44 * 624150907446 / e / e) / 1.7#* (e < 1e22)
 def propa(z, e):
     return e * (1 / (1 + z) + C / (H0 * sqrtH(z) * (1 + z) * xx(e)))
-def calc_cosmic_ray_rate_density_bonus(e0min, e0max, zs):
+def calc_cosmic_ray_rate_density_protons(e0min, e0max, zs):
     e0max = min(e0max, 1e21)
     e0s = np.linspace(e0min, e0max, num=int(np.ceil((e0max - e0min) / 5e15)))
     es = sp.integrate.solve_ivp(propa, [0, zs[-1]], e0s, t_eval=zs)
@@ -243,7 +229,6 @@ def get_source_parameters(model):
         # fR = {4: 2 /2, 14: 6.2/7, 28: 1.4/14, 56: .3/26}
         # fR = {4: 2 /2, 14: 6.2/7, 28: 1/14, 56: .16/26}
         
-
         # rc = 1.3e18 # at least I think
         # rc = 10 ** 18.15
         # rc = 1.3e18
@@ -304,8 +289,8 @@ def main():
     es[-1] = 2e22
 
     # Add 27.5 EeV, 32 EeV, 36.5 EeV
-    es = np.array([27.5e18, 32e18, 36.5e18, 2e22])
-    es = np.array([20e18, 27.5e18, 32e18, 36.5e18, 42e18, 47.9e18, 50e18, 60e18, 70e18, 2e22])
+    # es = np.array([27.5e18, 32e18, 36.5e18, 2e22])
+    es = np.array([20e18, 27.5e18, 32e18, 36.5e18, 42e18, 47.9e18, 50e18, 60e18, 70e18, 2e22]) # v2.0
 
     dndrs = []
     dndrs_pro = []

@@ -70,73 +70,22 @@ class LocalVarianceTest:
         return np.sqrt(corrfun / corrnorm * self._effective_area / np.pi) / self._angrad
 
 
-class MatchedFilterTest:
-    def __init__(self, signal, islog):
-        self._nside = hp.get_nside(signal)
-        self._npix = len(signal)
-        norm = np.mean(signal)
-        if islog:
-            self._signal = np.log(signal / norm)
-        else:
-            self._signal = signal / norm
-
-
-    def test(self, hitmap):
-        return np.dot(hitmap, self._signal)
-
 class BigMatchedFilterTest:
-    def __init__(self, signal=None):
+    def __init__(self, mlat, signal=None):
         if signal is None:
             return
 
         nside = hp.get_nside(signal)
         npix = len(signal)
         
-        self._regions = [[], [], [], [], [], [], [], [], [], [], [], []]
-        
-        for ipix in range(npix):
-            lon, lat = hp.pix2ang(nside, ipix, lonlat=True)
-            # if (0 < lon < 90) and (lat < -10):
-            #     self._regions[0].append(ipix)
-            # if (90 < lon < 180) and (lat < -5):
-            #     self._regions[1].append(ipix)
-            # if (270 < lon) and (lat > 10):
-            #     self._regions[2].append(ipix)
-            # if (180 < lon < 270) and (lat > 5):
-            #     self._regions[3].append(ipix)
-            # if (180 < lon < 270) and (lat < -5):
-            #     self._regions[4].append(ipix)
-            # if (270 < lon) and (lat < -10):
-            #     self._regions[5].append(ipix)
-            # if (0 < lon < 90) and (lat > 10):
-            #     self._regions[6].append(ipix)
-            # if (90 < lon < 180) and (lat > 5):
-            #     self._regions[7].append(ipix)
-            if ((0 < lon < 30) and (lat < -10)) or (30 < lon < 120) and (lat < -5):
-                self._regions[0].append(ipix)
-            if (120 < lon < 150) and (lat < -5):
-                self._regions[1].append(ipix)
-            if (150 < lon < 180) and (lat < -5):
-                self._regions[2].append(ipix)
-            if (180 < lon < 210) and (lat < -5):
-                self._regions[3].append(ipix)
-            if (210 < lon < 240) and (lat < -5):
-                self._regions[4].append(ipix)
-            if ((330 < lon < 360) and (lat < -10)) or (240 < lon < 330) and (lat < -5):
-                self._regions[5].append(ipix)
-            if ((0 < lon < 30) and (lat > 10)) or (30 < lon < 120) and (lat > 5):
-                self._regions[6].append(ipix)
-            if (120 < lon < 150) and (lat > 5):
-                self._regions[7].append(ipix)
-            if (150 < lon < 180) and (lat > 5):
-                self._regions[8].append(ipix)
-            if (180 < lon < 210) and (lat > 5):
-                self._regions[9].append(ipix)
-            if (210 < lon < 240) and (lat > 5):
-                self._regions[10].append(ipix)
-            if ((330 < lon < 360) and (lat > 10)) or (240 < lon < 330) and (lat > 5):
-                self._regions[11].append(ipix)
-            
+        l, b = hp.pix2ang(nside, np.arange(npix), lonlat=True)
+        self._reg0 = np.where(b > 45)
+        self._reg1 = np.where((b <= 45) & (l < 180) & (l > 100) & (np.abs(b) > mlat))
+        self._reg2 = np.where((b <= 45) & (l <= 100) & (l >= 0) & (np.abs(b) > mlat))
+        self._reg3 = np.where((b <= 45) & (l <= 360) & (l >= 270) & (np.abs(b) > mlat))
+        self._reg4 = np.where((b <= 45) & (l < 270) & (l >= 180) & (np.abs(b) > mlat))
+        self._regions = [self._reg0, self._reg1, self._reg2, self._reg3, self._reg4]
+
 
         # norm = np.mean(signal)
         # real_signal = np.log(signal / norm)
@@ -295,16 +244,16 @@ class BigMatchedFilterTest2:
 
 # Consider: import s2fft
 class SmallCorrelationTest:
-    def __init__(self, dmap, nside):
-        self._mask = zoa_mask(nside)
-        self._dmap = dmap
+    def __init__(self, angle, mlat, nside):
+        self._mask = zoa_maskc(nside, mlat)
+        self._angle = angle
         pass
     
     def test_against(self, hitmap1, hitmap2):
-        h1 = self._dmap @ hitmap1
-        h2 = self._dmap @ hitmap2
-        # h1 = hp.sphtfunc.smoothing(hitmap1, sigma=self._angle * np.pi / 180)
-        # h2 = hp.sphtfunc.smoothing(hitmap2, sigma=self._angle * np.pi / 180)
+#         h1 = self._dmap @ hitmap1
+        # h2 = self._dmap @ hitmap2
+        h1 = hp.sphtfunc.smoothing(hitmap1, sigma=self._angle * np.pi / 180)
+        h2 = hp.sphtfunc.smoothing(hitmap2, sigma=self._angle * np.pi / 180)
 
         # Getting rid of the milky way because gmf is too strong + catalog is problematic
         h1[self._mask] = 0
@@ -340,9 +289,9 @@ class SmallCorrelationTest:
     
 
 class MultipolesTest:
-    def __init__(self, dmap, exposure):
+    def __init__(self, angle, exposure):
         self._at = exposure
-        self._dmap = dmap
+        self._angle = angle
 
     def test(self, hitmap):
         # alm = hp.map2alm(hitmap)
@@ -356,7 +305,7 @@ class MultipolesTest:
         return np.array([cl[1] / cl[0], cl[2] / cl[0]])
 
     def other_test(self, hitmap):
-        hitmap2 = self._dmap @ hitmap / self._at
+        hitmap2 = hp.sphtfunc.smoothing(hitmap, sigma=self._angle * np.pi / 180) / self._at
         # cl = hp.anafast(hitmap2)
         # return np.array([cl[1] / cl[0], cl[2] / cl[0]])
 
@@ -391,22 +340,25 @@ def ad(map, compmap):
     return -n-s
 
 class SmallScaleVarTest:
-    def __init__(self, dmap, nside, comp_n, comp_p, mlat):
-        self._mask = zoa_mask(nside)
+    def __init__(self, angle, nside, mlat):
+        # self._mask = zoa_mask(nside)
         # self._mask = zoa_mask2(nside)
-        # self._mask = zoa_maskc(nside, mlat)
+        self._mask = zoa_maskc(nside, mlat)
+        self._angle = angle
 
-        self._dmap = dmap
-
-        self._n = dmap @ comp_n
-        self._n = np.delete(self._n, self._mask)
-        self._n /= np.sum(self._n)
-        self._p = dmap @ comp_p
-        self._p = np.delete(self._p, self._mask)
-        self._p /= np.sum(self._p)
-
-        self._n.sort()
-        self._p.sort()
+        npix = hp.nside2npix(nside)
+        idx = np.arange(npix)
+        cgrot = hp.Rotator(coord=['G', 'C'])
+        idec = cgrot(hp.pix2ang(nside, idx))[0]
+        self._northmap = np.where(idec <= np.pi/2)
+        self._southmap = np.where(idec > np.pi/2)
+        l, b = hp.pix2ang(nside, idx, lonlat=True)
+        self._reg0 = np.where(b > 45)
+        self._reg1 = np.where((b <= 45) & (l < 180) & (l > 100))
+        self._reg2 = np.where((b <= 45) & (l <= 100) & (l >= 0))
+        self._reg3 = np.where((b <= 45) & (l <= 360) & (l >= 270))
+        self._reg4 = np.where((b <= 45) & (l < 270) & (l >= 180))
+        self._regs = [self._reg0, self._reg1, self._reg2, self._reg3, self._reg4]
 
     def test(self, hitmap):
         hmap = self._dmap @ hitmap
@@ -420,7 +372,8 @@ class SmallScaleVarTest:
         return nn, pp
     
     def test2(self, hitmap, c='black'):
-        hmap = self._dmap @ hitmap
+        #hmap = self._dmap @ hitmap
+        hmap = hp.sphtfunc.smoothing(hitmap, sigma=16.5 * np.pi / 180)
 
         hmap = np.delete(hmap, self._mask)
 
@@ -434,3 +387,17 @@ class SmallScaleVarTest:
         cist = np.cumsum(hist) / np.sum(hist)
         plt.plot(be[:-1] / np.sum(hmap), cist, color=c, alpha=.3)
         # TOPHAT
+
+    def test_ent(self, hitmap):
+        hmap = hp.sphtfunc.smoothing(hitmap, sigma=self._angle * np.pi / 180)
+
+        #hmap = np.delete(hmap, self._mask)
+        hmap[self._mask] = 0
+
+        entr = 0
+        for reg in self._regs:
+            nmap = hmap[reg]
+            nmap /= np.sum(nmap)
+            entr += np.sum(sp.special.entr(nmap))
+        return np.sum(sp.special.entr(hmap / np.sum(hmap))), entr
+

@@ -219,21 +219,43 @@ def plot_spec(data):
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--summary-path", "-s", help="path for summary dir", default="../summary")
-    parser.add_argument("--dataf-path", "-f", help="path for dataf dir", default="../fdata")
+    parser.add_argument("--dataf-path", "-f", help="path for dataf dir", default="../data")
     parser.add_argument("--nside", "-n", help="nside for the healpix map", default=NSIDE)
     return parser.parse_args()
 
 def main():
     args = parse_args()
-    at = exposure.create_exposure_map(args.nside, "auger10")
+    # at = exposure.create_exposure_map(args.nside, "auger10")
 
-    data = parse_auger_summaries(args.summary_path)
+    # data = parse_auger_summaries(args.summary_path)
 
     atf = exposure.create_exposure_map(args.nside, "auger")
     dataf = parse_uhecr_data(args.dataf_path)
-
+    datafhigh = energy_filter(dataf, 42e18, 1e22)
     mf = build_map(dataf, 'G', args.nside)
+    mfhigh = build_map(datafhigh, 'G', args.nside)
     hp.mollview(mf)
+    
+    
+    nucmean = np.sum(np.load("/mnt/x/uhecr/cr_output/meanmaps/ideal/mean_v2_m-2_s-2_b1.npy")[2:], axis=0)
+    promean = np.sum(np.load("/mnt/x/uhecr/cr_output/meanmaps/ideal/mean_v2_m0_s-2_b1.npy")[2:], axis=0)
+    
+    for mask in [0, 10]:
+        print(f"MASK {mask}")
+        print("Ent:")
+        ent = analysis.SmallScaleVarTest(16.7, args.nside, mask)
+        # print(ent.test_ent(mf))
+
+        print("Ect:")
+        ect = analysis.SmallCorrelationTest(16.7, mask, args.nside)
+        # print(ect.test_against(mf, mfhigh))
+
+        print("Mft:")
+        mft_nuc = analysis.BigMatchedFilterTest(mask, nucmean)
+        mft_pro = analysis.BigMatchedFilterTest(mask, promean)
+        # print(mft_nuc.test(mf), mft_pro.test(mf))
+
+
     plt.show()
     return
 

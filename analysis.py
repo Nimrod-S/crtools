@@ -100,7 +100,7 @@ class BigMatchedFilterTest:
 
         self._signal_regions = []
         for region in self._regions:
-            self._signal_regions.append(np.sum(norm_signal[region]))
+            self._signal_regions.append(np.sum(norm_signal[region]) / len(region[0]))
         self._signal_regions = np.array(self._signal_regions)
 
         self._signal_regions = np.log(self._signal_regions)
@@ -293,6 +293,22 @@ class MultipolesTest:
         self._at = exposure
         self._angle = angle
 
+        self._gcrot = hp.Rotator(coord=['G', 'C'])
+        self._cgrot = hp.Rotator(coord=['G', 'C'])
+
+        mask = self._gcrot.rotate_map_pixel(exposure) > 0
+        self._nside = hp.npix2nside(mask.size)
+        self._npix = mask.size
+        z = hp.pix2vec(nside, np.arange(mask.size)[mask])[2]
+        zd, zs = 2 * mask.sum() / mask.size, 2 * z.mean()
+        cmin, cmax = (np.clip([(s + d) / 2, (s - d) / 2], -1, 1))
+
+        self._u = np.asarray(hp.pix2vec(nside, np.arange(self._npix)))
+
+        self._d, self._s, self._p = cmin - cmax, cmin + cmax, cmin * cmax
+        self._g = (self._s * self._s - self._p) / 3
+
+
     def test(self, hitmap):
         # alm = hp.map2alm(hitmap)
         hitmap2 = self._dmap @ hitmap
@@ -312,6 +328,38 @@ class MultipolesTest:
         al = hp.map2alm(hitmap2, lmax=2)
         vec = np.array([np.real(al[3]) * np.sqrt(2), np.imag(al[3]) * np.sqrt(2), np.real(al[1])])
         return vec / np.real(al[0]) * np.sqrt(3)
+    
+    def just_multipoles_fullexp(self, hitmap):
+        hitmap2 = hp.sphtfunc.smoothing(hitmap, sigma=self._angle * np.pi / 180) / self._at
+        
+        cl = hp.anafast(hitmap2, lmax=10)
+        # if   h = h0 (1 + d cos (theta))
+        # then c0 = 4pi * h0^2
+        # and  c1 = 4pi * h0^2 d^2 / 9 (this 9 is (2l+1)^2)
+        # so   d = 3 * sqrt(c1 / c0)
+        return cl
+
+    def ra_semiexp(self, hitmap):
+        hitmap2 = hp.sphtfunc.smoothing(hitmap, sigma=self._angle * np.pi / 180)
+
+        al = hp.map2alm(hitmap2, lmax=2)
+        vec = np.array([np.real(al[3]) * np.sqrt(2), np.imag(al[3]) * np.sqrt(2), np.real(al[1])])
+        
+        return self._gcrot(hp.vec2ang(vec, lonlat=True), lonlat=True)[0]
+         
+
+    def dipole_semiexp(self, hitmap):
+        normalized_hmap = np.divide(hitmap, self._at, out=np.zeros(self._npix), where=self._at>0)
+
+        I0 = normalized_hmap.sum()
+        I = u @ normalized_hmap
+        I = self._gcrot(I)
+
+        den = self._s * I[2] - 2 * self._g * I0
+        f = (self._g-self._p)/(self._g-1)/den
+        D = np.array([I[0] * f, I[1] * f, (s*I0-2*I[2])/den])
+        D = self._cgrot(D)
+        return D
  
 
     # TODO do something w/ these functions

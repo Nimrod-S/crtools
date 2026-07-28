@@ -294,19 +294,20 @@ class MultipolesTest:
         self._angle = angle
 
         self._gcrot = hp.Rotator(coord=['G', 'C'])
-        self._cgrot = hp.Rotator(coord=['G', 'C'])
+        self._cgrot = hp.Rotator(coord=['C', 'G'])
 
         mask = self._gcrot.rotate_map_pixel(exposure) > 0
         self._nside = hp.npix2nside(mask.size)
         self._npix = mask.size
-        z = hp.pix2vec(nside, np.arange(mask.size)[mask])[2]
+        z = hp.pix2vec(self._nside, np.arange(mask.size)[mask])[2]
         zd, zs = 2 * mask.sum() / mask.size, 2 * z.mean()
-        cmin, cmax = (np.clip([(s + d) / 2, (s - d) / 2], -1, 1))
-
-        self._u = np.asarray(hp.pix2vec(nside, np.arange(self._npix)))
+        cmin, cmax = (np.clip([(zs + zd) / 2, (zs - zd) / 2], -1, 1))
 
         self._d, self._s, self._p = cmin - cmax, cmin + cmax, cmin * cmax
         self._g = (self._s * self._s - self._p) / 3
+
+        self._u = np.asarray(hp.pix2vec(self._nside, np.arange(self._npix)))
+
 
 
     def test(self, hitmap):
@@ -352,12 +353,12 @@ class MultipolesTest:
         normalized_hmap = np.divide(hitmap, self._at, out=np.zeros(self._npix), where=self._at>0)
 
         I0 = normalized_hmap.sum()
-        I = u @ normalized_hmap
+        I = self._u @ normalized_hmap
         I = self._gcrot(I)
 
         den = self._s * I[2] - 2 * self._g * I0
         f = (self._g-self._p)/(self._g-1)/den
-        D = np.array([I[0] * f, I[1] * f, (s*I0-2*I[2])/den])
+        D = np.array([I[0] * f, I[1] * f, (self._s*I0-2*I[2])/den])
         D = self._cgrot(D)
         return D
  

@@ -62,9 +62,7 @@ def create_mean_persource_flux(zs, source_profile, dndr):
 def create_rotation_smear_matrix(nside, npix, smear_th, smear_phi, v1, v2, v3):
     v_smeared = v1 * np.cos(smear_th)[:, np.newaxis] + v2 * (np.sin(smear_th) * np.cos(smear_phi))[:, np.newaxis] + v3 * (np.sin(smear_th) * np.sin(smear_phi))[:, np.newaxis]
     i_smeared = hp.vec2pix(nside, *v_smeared.transpose())
-    smearmat = np.zeros((npix, npix)).astype(np.int16)
-    smearmat[i_smeared, np.arange(npix),] = 1
-    return smearmat
+    return i_smeared
 
 
 def sum_of_uniforms(counts, loc, scale):
@@ -195,8 +193,8 @@ def old_meanmap_create(nside, s, source_profile, zs, expname, output_directory, 
                 flux_n = flux_n[lens_n[j]]
                 flux_p = flux_p[lens_p[j]]
 
-            mean_n.append(np.sum(s * n_nuc[exp][j], axis=0))
-            mean_p.append(np.sum(s * n_pro[exp][j], axis=0))
+            mean_n.append(flux_n * at[exp])
+            mean_p.append(flux_p * at[exp])
 
         mean_n = np.array(mean_n)
         mean_p = np.array(mean_p)
@@ -242,10 +240,14 @@ def randomize_and_save(nside, s, source_profile, zs, expname, output_directory, 
     v2 = np.column_stack((-np.sin(ph), np.cos(ph), np.zeros(npix)))
     v3 = np.column_stack((np.cos(th) * np.cos(ph), np.cos(th) * np.sin(ph), -np.sin(th)))
 
+    s0 = source_profile[0]
+    logs0 = int(np.log10(s0))
+    source_path = output_directory + f"/sourcemaps/source_v1_s{logs0}_b{source_profile[2]}_"
 
     # for i in tqdm.tqdm(range(10000)):
     for i in range(10000):
-        sources = sp.stats.poisson(s).rvs()
+        #sources = sp.stats.poisson(s).rvs()
+        sources = np.load(source_path+f"{i}.npy")
 
         # Randomize deflections
         smear_phi = sp.stats.uniform(0, 2*np.pi).rvs(npix)
@@ -259,17 +261,23 @@ def randomize_and_save(nside, s, source_profile, zs, expname, output_directory, 
             hitmaps_p = []
 
             for j in range(len(dndrs)):
-                smearmat_n = create_rotation_smear_matrix(nside, npix, smear_th_norm * smear_map_n[j], smear_phi, v1, v2, v3)
-                smearmat_p = create_rotation_smear_matrix(nside, npix, smear_th_norm * smear_map_p[j], smear_phi, v1, v2, v3)
-
                 source_flux_n = np.sum(n_nuc[j] * sources, axis=0)
                 source_flux_p = np.sum(n_pro[j] * sources, axis=0)
 
-                source_flux_n = smearmat_n @ source_flux_n[lens_n[j]]
-                source_flux_p = smearmat_p @ source_flux_p[lens_p[j]]
+                smearmat_n = create_rotation_smear_matrix(nside, npix, smear_th_norm * smear_map_n[j], smear_phi, v1, v2, v3)
+                smearmat_p = create_rotation_smear_matrix(nside, npix, smear_th_norm * smear_map_p[j], smear_phi, v1, v2, v3)
 
-                mean_n = source_flux_n * at[exp]
-                mean_p = source_flux_p * at[exp]
+                source_flux_n = source_flux_n[lens_n[j]]
+                source_flux_p = source_flux_p[lens_p[j]]
+
+                source_flux_smeared_n = np.zeros(npix)
+                source_flux_smeared_p = np.zeros(npix)
+                for ipix in range(npix):
+                    source_flux_smeared_n[smearmat_n[ipix]] += source_flux_n[ipix]
+                    source_flux_smeared_p[smearmat_p[ipix]] += source_flux_p[ipix]
+
+                mean_n = source_flux_smeared_n * at[exp]
+                mean_p = source_flux_smeared_p * at[exp]
 
                 hitmaps_n.append(sp.stats.poisson(mean_n).rvs())
                 hitmaps_p.append(sp.stats.poisson(mean_p).rvs())
@@ -277,6 +285,26 @@ def randomize_and_save(nside, s, source_profile, zs, expname, output_directory, 
             if save:
                 save_hitmap(np.array(hitmaps_n), -2, source_profile, basename + magname, i, output_directory+f"/hitmaps/{exp}")
                 save_hitmap(np.array(hitmaps_p), 0, source_profile, basename + magname, i, output_directory+f"/hitmaps/{exp}")
+
+
+def randomize_and_save_sources(nside, s, source_profile, zs, output_directory, lum=False, save=True):
+
+    npix = hp.nside2npix(nside)
+
+    s0 = source_profile[0]
+    logs0 = int(np.log10(s0))
+
+    # for i in tqdm.tqdm(range(10000)):
+    for i in range(10000):
+        sources = sp.stats.poisson(s).rvs()
+        bratio = source_profile[2]
+
+        full_name = f"source_v1_s{logs0}_b{source_profile[2]}_{i}"
+        full_path = output_directory + "/sourcemaps/" + full_name
+
+        # Absolutely no way we get more than 10000 rays in one pixel
+        sources = sources.astype(np.uint16)
+        np.save(full_path, sources)
 
     return
 
@@ -292,6 +320,8 @@ def parse_args():
 
     parser.add_argument("--gmf", help="what gmf model to use (default: -1, none)", default=-1, type=int)
     parser.add_argument("--lum", help="whether to consider variable luminosity", action="store_true")
+
+    parser.add_argument("--justs", help="just randomize sources", action="store_true")
     return parser.parse_args()
 
 def main():
@@ -304,10 +334,15 @@ def main():
 
     b = np.load(args.output_directory + "/lss/lss_bias_v1.npy")
 
+
     for sd in [np.power(10.0, int(args.source_density))]:
         source_profile = (sd, args.source_evolution, bratio)
         s = create_mean_source_count_map(b, zs, source_profile)
-        randomize_and_save(args.nside, s, source_profile, zs, [args.exposure], args.output_directory, gmfmod=args.gmf, lum=args.lum)
+        if args.justs:
+            randomize_and_save_sources(args.nside, s, source_profile, zs, args.output_directory, lum=args.lum)
+        else:
+            randomize_and_save(args.nside, s, source_profile, zs, [args.exposure], args.output_directory, gmfmod=args.gmf, lum=args.lum)
+            #old_meanmap_create(args.nside, s, source_profile, zs, [args.exposure], args.output_directory, gmfmod=args.gmf)
         
     return
 

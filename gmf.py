@@ -3,7 +3,6 @@ from cosmology import *
 import healpy as hp
 
 # All fields are in uG, all distnces are in pc
-# TODO citations
 B_random = 5
 l_random = 60
 D_random = 3e3
@@ -17,8 +16,6 @@ def Rl(R, B):
 # In radians
 def deflection_random_old(R):
     return np.sqrt(l_random * D_random) / Rl(R, B_random) * np.sqrt(2/9)
-
-# ----- Anything above this line is unimportnt -----
 
 def rmstd(lat):
     return np.abs(7 / np.sin(lat * np.pi/180))

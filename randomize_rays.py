@@ -8,7 +8,7 @@ import exposure
 import lss
 import propagation
 import gmf
-#import crpropa_gmf
+import crpropa_gmf
 from cosmology import *
 
 NSIDE=32
@@ -34,20 +34,6 @@ def create_mean_source_count_map(source_bias, z, source_profile):
 
     return mean_source
 
-def create_mean_persousrce_count_map(zs, source_profile, dndr, exposure):
-    # The exposure is in km^2, so we need to divide by this
-    mpc_in_km = 3.086e19
-    at = exposure / (mpc_in_km)**2
-    
-    z = zs.reshape((len(zs), 1)) # Converting to proper column vector for ease of calculations
-    dndr = dndr.reshape((len(z), 1))
-
-    dl = z2dprop(z) * (1+z)
-    s0, _, _ = source_profile
-
-    persource_flux = dndr / s0 * (1+z) / (4 * np.pi * dl ** 2)
-
-    return persource_flux * at
 
 def create_mean_persource_flux(zs, source_profile, dndr):
     z = zs.reshape((len(zs), 1)) # Converting to proper column vector for ease of calculations
@@ -63,7 +49,6 @@ def create_rotation_smear_matrix(nside, npix, smear_th, smear_phi, v1, v2, v3):
     v_smeared = v1 * np.cos(smear_th)[:, np.newaxis] + v2 * (np.sin(smear_th) * np.cos(smear_phi))[:, np.newaxis] + v3 * (np.sin(smear_th) * np.sin(smear_phi))[:, np.newaxis]
     i_smeared = hp.vec2pix(nside, *v_smeared.transpose())
     return i_smeared
-
 
 def sum_of_uniforms(counts, loc, scale):
     tots = np.zeros(counts.shape)
@@ -119,14 +104,13 @@ def save_smearmap(smearmap, source_model, name, path):
 
     np.save(full_path, smearmap)
 
-# --- Old helpful ---
-def old_lens_create(es, nside, output_directory):
+# --- Secondary functions ---
+def s_lens_create(es, nside, output_directory):
     rap = propagation.get_mean_r(es, 0)
     raa = propagation.get_mean_r(es, -2)
     lens_n = [[crpropa_gmf.proplens("UF23", r, nside, modeltype=m) for r in raa] for m in range(8)]
     lens_p = [[crpropa_gmf.proplens("UF23", r, nside, modeltype=m) for r in rap] for m in range(8)]
 
-    # for mag in ["UF23", "JF12", "KST24"]:
     for m in range(8):
         for j in range(len(raa)):
             lnn = lens_n[m][j]
@@ -136,7 +120,7 @@ def old_lens_create(es, nside, output_directory):
     
     return
 
-def old_smear_create(es, nside, output_directory, gmfmod):
+def s_smear_create(es, nside, output_directory, gmfmod):
     npix = hp.nside2npix(nside)
 
     rig_nuc = propagation.get_mean_r(es, -2)
@@ -158,7 +142,7 @@ def old_smear_create(es, nside, output_directory, gmfmod):
     save_smearmap(smear_map_n, -2, "v2"+magname, output_directory+f"/smearmaps/")
     save_smearmap(smear_map_p, 0, "v2"+magname, output_directory+f"/smearmaps/")
 
-def old_meanmap_create(nside, s, source_profile, zs, expname, output_directory, gmfmod):
+def s_meanmap_create(nside, s, source_profile, zs, expname, output_directory, gmfmod):
 
     npix = hp.nside2npix(nside)
 
@@ -203,7 +187,7 @@ def old_meanmap_create(nside, s, source_profile, zs, expname, output_directory, 
     return
 
 # --- MAIN ---
-def randomize_and_save(nside, s, source_profile, zs, expname, output_directory, gmfmod=-1, lum=False, save=True):
+def randomize_and_save_rays(nside, source_profile, zs, expname, output_directory, gmfmod=-1, lum=False, lenses=False, save=True):
 
     npix = hp.nside2npix(nside)
 
@@ -217,6 +201,10 @@ def randomize_and_save(nside, s, source_profile, zs, expname, output_directory, 
     basename = "v2"
     if lum:
         basename += "_L"
+
+    if lenses:
+        s_smear_create(es, nside, output_directory, gmfmod)
+        s_lens_create(es, nside, output_directory)
 
     n_nuc = [create_mean_persource_flux(zs, source_profile, dndr) for dndr in dndrs]
     n_pro = [create_mean_persource_flux(zs, source_profile, dndr) for dndr in dndrs_pro]
@@ -287,22 +275,20 @@ def randomize_and_save(nside, s, source_profile, zs, expname, output_directory, 
                 save_hitmap(np.array(hitmaps_p), 0, source_profile, basename + magname, i, output_directory+f"/hitmaps/{exp}")
 
 
-def randomize_and_save_sources(nside, s, source_profile, zs, output_directory, lum=False, save=True):
-
-    npix = hp.nside2npix(nside)
+def randomize_and_save_sources(nside, s, source_profile, zs, output_directory):
 
     s0 = source_profile[0]
+    bratio = source_profile[2]
     logs0 = int(np.log10(s0))
 
     # for i in tqdm.tqdm(range(10000)):
     for i in range(10000):
         sources = sp.stats.poisson(s).rvs()
-        bratio = source_profile[2]
 
-        full_name = f"source_v1_s{logs0}_b{source_profile[2]}_{i}"
+        full_name = f"source_v1_s{logs0}_b{bratio}_{i}"
         full_path = output_directory + "/sourcemaps/" + full_name
 
-        # Absolutely no way we get more than 10000 rays in one pixel
+        # Absolutely no way we get more than 10000 sources in one pixel
         sources = sources.astype(np.uint16)
         np.save(full_path, sources)
 
@@ -314,36 +300,36 @@ def parse_args():
     parser.add_argument("--nside", "-n", help="nside for the healpix map", default=NSIDE)
     parser.add_argument("--exposure", "-e", choices=['isotropic', 'auger', 'auger10', 'ta', '2022', 'ideal'], help="sky exposure pattern to use (default: ideal)", default='ideal')
     parser.add_argument("--source-density", "-sd", help="log10 source density (Mpc^-3)", type=float, default=-2.0)
-    parser.add_argument("--source-evolution", "-se", help="source evolution index", type=float, default=0.0)
+    parser.add_argument("--source-evolution", "-se", help="source evolution index", type=float, default=0.0) # NOT USED IN THE PAPER
     parser.add_argument("--bias", "-b", choices=['iso', 'neutral', 'high'], help="source distribution bias to 2MRS", default='neutral')
     parser.add_argument("--output-directory", "-o", help="output path to save results in", default=None)
 
     parser.add_argument("--gmf", help="what gmf model to use (default: -1, none)", default=-1, type=int)
-    parser.add_argument("--lum", help="whether to consider variable luminosity", action="store_true")
+    parser.add_argument("--lum", help="whether to consider variable luminosity", action="store_true") # NOT USED IN THE PAPER
 
-    parser.add_argument("--justs", help="just randomize sources", action="store_true")
+    parser.add_argument("--lenses", help="create lenses in addition to randomizing rays", action="store_true")
+    parser.add_argument("--justs", help="randomize sources (instead of rays)", action="store_true")
     return parser.parse_args()
 
 def main():
 
     args = parse_args()
 
-    zs = np.linspace(0, 0.4, 401)[1:] # Important: resolution need to be better than the bias map voxel size
+    zs = np.linspace(0, 0.4, 401)[1:]
 
     bratio = {"iso": 0, "neutral": 1, "high": 1.7}[args.bias]
 
     b = np.load(args.output_directory + "/lss/lss_bias_v1.npy")
 
-
     for sd in [np.power(10.0, int(args.source_density))]:
         source_profile = (sd, args.source_evolution, bratio)
-        s = create_mean_source_count_map(b, zs, source_profile)
         if args.justs:
+            s = create_mean_source_count_map(b, zs, source_profile)
             randomize_and_save_sources(args.nside, s, source_profile, zs, args.output_directory, lum=args.lum)
         else:
-            randomize_and_save(args.nside, s, source_profile, zs, [args.exposure], args.output_directory, gmfmod=args.gmf, lum=args.lum)
-            #old_meanmap_create(args.nside, s, source_profile, zs, [args.exposure], args.output_directory, gmfmod=args.gmf)
-        
+            
+            randomize_and_save_rays(args.nside, source_profile, zs, [args.exposure], args.output_directory, gmfmod=args.gmf, lum=args.lum, lenses=args.lenses)
+            #s_meanmap_create(args.nside, s, source_profile, zs, [args.exposure], args.output_directory, gmfmod=args.gmf)        
     return
 
 if __name__ == "__main__":

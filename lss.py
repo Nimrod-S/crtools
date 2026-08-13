@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 
 # --- LOCAL STRUCTURE ---
 def selection_func_2mrs(z):
-    A, alpha, gamma, zc = 116000, 2.108, 1.125, 0.025 # TODO citation
+    A, alpha, gamma, zc = 116000, 2.108, 1.125, 0.025 # TODO citation (I ended up not using this)
     return selection_func_generic(z, A, alpha, gamma, zc)
 
 def selection_func_fit(z):
@@ -73,7 +73,7 @@ def parse_catalog_data_mrs(catalog_path, correction_path):
             if fields[0] in corrections:
                 modc = corrections[fields[0]]
                 z = np.power(10, modc / 5 - 5) * H0 / C
-                # TODO extra bias to fix here
+                # We are left with a small extra bias by correcting unfairly, since our category for correction was a small v in 2mrs, but it's possible that a nearby galaxy had a large peculiar v that pushed it out of correction range. Might want to fix it in the future
             else:
                 real_v = fix_localgroup_v(float(fields[3]), float(fields[4]), float(fields[24]))
                 z = max(real_v / C, 0)
@@ -125,7 +125,7 @@ def fill_galactic_plane(catalog_data, min_z, max_z):
     missing_N = np.where(counts_external != 0,
         sp.stats.norm(loc=missing_counts, scale=1).rvs(),
         0
-    ) # TODO CHANGE
+    ) # TODO CHANGE THIS?
 
     for li in range(len(lon_bins) - 1):
         for zi in range(len(z_bins) - 1):
@@ -135,7 +135,7 @@ def fill_galactic_plane(catalog_data, min_z, max_z):
             ls = sp.stats.uniform(loc=lon_bins[li], scale=lon_bins[li + 1]-lon_bins[li]).rvs(size=N)
             bs = sp.stats.uniform(loc=-lat_internal[li], scale=lat_internal[li]*2).rvs(size=N)
             zs = sp.stats.uniform(loc=z_bins[zi], scale=z_bins[zi + 1]-z_bins[zi]).rvs(size=N)
-            ks = np.random.choice(magnitudes_external[zi][li], N) # replace=True. TODO CHANGE
+            ks = np.random.choice(magnitudes_external[zi][li], N) # replace=True. TODO CHANGE THIS?
             for l, b, z, k in zip(ls, bs, zs, ks):
                 catalog_data.append({
                     "name": "FAKE",
@@ -150,6 +150,7 @@ def create_source_bias_map_mrsl(catalog_path, correction_path, nside, zs, min_ca
     """
     Below min_catalog_dl, assume there is nothing (basically cut out our satellite dwarf galaxies)
     Above max_catalog_dl, assume isotropy
+    mrsl : l stands for luminosity (since we weigh by luminosity)
     """
     data = parse_catalog_data_mrs(catalog_path, correction_path)
 
@@ -208,6 +209,7 @@ def create_source_bias_map_mrsl(catalog_path, correction_path, nside, zs, min_ca
                 mean_density = totallum / np.sum(4 * np.pi * dls[:i] ** 2) # I thought about this a lot, this is correct
                 hpmaps[:i] /= mean_density
 
+                # This functionality moved to a separate function
                 # hpmaps[:i] = (hpmaps[:i] / mean_density - 1) * bias_ratio + 1
                 # hpmaps[:i][hpmaps[:i] < 0] = 0
         
@@ -233,13 +235,17 @@ def main():
     parser.add_argument("--mrs-directory", "-m", help="path for MRS catalog + correction files", default="../MRS")
     args = parser.parse_args()
     
-    zs = np.linspace(0, 0.4, 401)[1:] # Important: resolution need to be better than the bias map voxel size
+    zs = np.linspace(0, 0.4, 401)[1:]
 
     # 200 seems more or less the limit where the avg angular separation under 10 deg
     b = create_source_bias_map_mrsl(args.mrs_directory+"/catalog/2mrs_1175_done.dat", args.mrs_directory+"/CORRECTIONS/nearby.txt",
                                      args.nside, zs, 0.5, 200)
     
     np.save(args.output_directory+"/lss/lss_bias_v1", b)
+
+    # b = create_source_bias_map_mrsl(args.mrs_directory+"/catalog/2mrs_1175_done.dat", args.mrs_directory+"/CORRECTIONS/nearby.txt",
+    #                                  args.nside, zs, 5, 200)
+    # np.save(args.output_directory+"/lss/lss_bias_v2", b)
 
 
 if __name__ == "__main__":

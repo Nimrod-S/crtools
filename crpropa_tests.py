@@ -1,4 +1,3 @@
-from decimal import Decimal
 import tqdm
 import itertools
 from crpropa import *
@@ -29,11 +28,11 @@ def define_simulation():
     simulation.add(NuclearDecay())
 
     # Cosmology
-    # We are NOT adding FutureRedshift and AdiabaticCooling. Need to think about it. TODO
+    # We are NOT adding FutureRedshift and AdiabaticCooling. 
     simulation.add(Redshift())
 
     # Conditions
-    #simulation.add(MinimumEnergy(1 * EeV)) # TODO change this
+    #simulation.add(MinimumEnergy(1 * EeV))
 
     return simulation
 
@@ -51,17 +50,6 @@ def define_ray(a, g, d_Mpc):
     ray = Candidate(nucleusId(a, STABLE_ISOTOPES[a]), e, Vector3d(d_Mpc * Mpc, 0, 0))
 
     return ray
-
-def define_source(d_Mpc):
-    source = Source()
-    source.add(SourceUniformHollowSphere(Vector3d(0, 0, 0), 50 * kpc, d_Mpc * Mpc))
-    sc = SourceComposition(1e17 * eV, 1.3e18, 2)
-    sc.add(nucleusId(56, 26), 1/15 / 56**3)
-    sc.add(nucleusId(28, 14), 1/6 / 28**3)
-    sc.add(nucleusId(14, 7), 1 / 14**3)
-    source.add(sc)
-
-    return source
 
 
 def a_of_ray(r):
@@ -92,50 +80,13 @@ def generate_test_cases():
 
 def present_results(results, on_g):
 
-    
     for a in results.keys():
-        # resultsgd = results[a]
-        # gs = list(resultsgd.keys())
-        # ds = list(resultsgd[gs[0]].keys())
-        # table_sim = np.zeros((len(gs), len(ds)))
-        # table_m1 = np.zeros((len(gs), len(ds)))
-        # table_mc = np.zeros((len(gs), len(ds)))
-        # for g in gs:
-        #     gi = gs.index(g)
-        #     resultsd = resultsgd[g]
-        #     for d in ds:
-        #         if d not in resultsd.keys():
-        #             continue
-        #         di = ds.index(d)
-        #         mr, err, er, m1, m1f, mc, m2f, stop = resultsd[d]
-        #         table_sim[gi][di] = mr
-        #         table_m1[gi][di] = m1
-        #         table_mc[gi][di] = mc
-
-        # plt.figure()
-        # plt.imshow(table_sim)
-        
-        # plt.figure()
-        # plt.imshow(table_m1)
-
-        # plt.figure()
-        # plt.imshow(table_mc)
-
-        # plt.show()
-
-        # continue
         
         fig = plt.figure()
         fig.suptitle(f"A={a} old")
-                            # plt.xlim(left=ds[0])
 
         if on_g:
             for i, g in enumerate(results[a].keys()):
-                # ax = fig.add_subplot(3, 3, i + 1)
-                # ax.set_title(f"$\gamma$={g:.2e}, E={g * propagation.MP * a}")
-                # ax.set_xscale('log')
-                # ax.set_yscale('log')
-                # ax.set_ylim('')
                 plt.yscale("log")
     
                 ds = np.array(list(results[a][g].keys()))
@@ -151,20 +102,9 @@ def present_results(results, on_g):
                 mc = np.array(mc)
                 m2f = np.array(m2f)
 
-                #m3 = np.array([model3_ratio(a, g, d) for g in gs])
-
-                # ax = plt.axes()
-                # ax.set_xscale('log')
-                # ax.set_yscale('log')
-                # plt.errorbar(ds, mr * g * a * propagation.MP, errs * g * a * propagation.MP, color='royalblue')
-                # plt.plot(ds, mr * g * a * propagation.MP, color='royalblue', label="mass ratio")
-                # plt.plot(ds, m1 * g * a * propagation.MP, color='gray', label="model 1", linestyle='--')
-                # plt.plot(ds, er * g * a * propagation.MP, color='dodgerblue', label="energy ratio")
                 plt.plot(ds, mr * g * a * propagation.MP, color=f'C{i}', label="mass ratio", alpha=.6)
                 plt.plot(ds, m1 * g * a * propagation.MP, color=f'C{i}', label="model 1", linestyle='--')
                 plt.plot(ds, er * g * a * propagation.MP, color=f'C{i}', label="energy ratio")
-                # plt.title(f"A={a}, E={'%.2E' % Decimal(g * 1e9 * a)} eV, g={'%.2E' % Decimal(g)}")
-                # plt.show()
         else:
             for d in results[a].keys():
                 gs = np.array(list(results[a][d].keys()))
@@ -180,8 +120,6 @@ def present_results(results, on_g):
                 m2 = np.array(m2)
                 m2f = np.array(m2f)
 
-                #m3 = np.array([model3_ratio(a, g, d) for g in gs])
-
                 ax = plt.axes()
                 ax.set_xscale('log')
                 ax.set_yscale('log')
@@ -196,21 +134,9 @@ def present_results(results, on_g):
                 plt.title(f"A={a}, d={d} Mpc")
                 plt.show()
 
-                # ax = plt.axes()
-                # ax.set_xscale('log')
-                # ax.set_yscale('log')
-                # plt.plot(gs, m1 / mr, color='red')
-                # plt.plot(gs, m1f / mr, color='orange')
-                # plt.plot(gs, m2 / mr, color='green')
-                # plt.plot(gs, m2f / mr, color='black')
-                # plt.plot(gs, er / mr, color='gray')
-                # plt.show()
         plt.legend()
 
     plt.show()
-
-
-            
 
 def do_tests(on_g = False):
     test_cases = generate_test_cases()
@@ -222,7 +148,6 @@ def do_tests(on_g = False):
     results = {}
     
     for test in tqdm.tqdm(test_cases):
-        #print(f"testing: A={test[0]}, g={test[1]}, d={test[2]} Mpc")
         rays = [define_ray(*test) for i in range(1000)]
 
         energy_ratios = []
@@ -234,15 +159,6 @@ def do_tests(on_g = False):
             energy_ratios.append(ray.current.getEnergy() / ray.source.getEnergy())
             mass_ratios.append(a_of_ray(ray.current) / a_of_ray(ray.source))
             stops.append(ray.current.getPosition())
-
-        counts, bins = np.histogram(np.array(mass_ratios) * test[0], np.linspace(0.5, test[0] + 0.5, test[0] + 1))
-        #plt.stairs(counts, bins)
-        #plt.show()
-        # counts, bins = np.histogram(energy_ratios)
-        # plt.stairs(counts, bins)
-        # counts, bins = np.histogram(mass_ratios)
-        # plt.stairs(counts, bins)
-        # plt.show()
 
         a, g, d = test
         if on_g:
@@ -260,7 +176,6 @@ def do_tests(on_g = False):
             results[a][d][g] = (np.mean(mass_ratios), np.std(mass_ratios), np.mean(energy_ratios), propagation.lossfactor_comovingd(*test), 0, propagation.lossfactor_comovingd(*test), 0, np.mean(stops))
 
     present_results(results, on_g)
-
 
 def max_len_tests():
 
@@ -283,9 +198,6 @@ def max_len_tests():
         
                 for ray in rays:
                     simulation.run(ray)
-                    #energy_ratios.append(ray.current.getEnergy() / ray.source.getEnergy())
-                    #mass_ratios.append(a_of_ray(ray.current) / a_of_ray(ray.source))
-                    #stops.append(ray.current.getPosition())
                     es.append(ray.current.getEnergy() / eV)
                 if np.mean(es) / e < 1 / a:
                     break
@@ -297,48 +209,12 @@ def max_len_tests():
         plt.show()
     return
 
-
-    results = {}
-
-    d = 1e1
-    a = 16
-    e0 = 6e19
-    
-    # If it was exactly e0 at the source
-    smallest_g = e_to_g(e0, a)
-    gs = np.logspace(np.log10(smallest_g), 10, 16)
-
-    finales = []
-
-    for g in tqdm.tqdm(gs):
-    
-        rays = [define_ray(a, g, d) for i in range(10000)]
-
-        energy_ratios = []
-        mass_ratios = []
-        stops = []
-
-        es = []
-        
-        for ray in rays:
-            simulation.run(ray)
-            #energy_ratios.append(ray.current.getEnergy() / ray.source.getEnergy())
-            #mass_ratios.append(a_of_ray(ray.current) / a_of_ray(ray.source))
-            #stops.append(ray.current.getPosition())
-            es.append(ray.current.getEnergy() / eV) 
-        finales.append(np.mean(es))
-    
-    plt.loglog(gs, finales)
-    plt.show()
-
-
 def do_other_tests(a):
 
     e1s = np.geomspace(2e19, 2e20)
     ds = np.geomspace(1, 5000)
     e0s = np.array([1e20, 9e19, 8e19, 7e19, 6e19, 5e19, 4e19, 3e19, 2e19])
-    # e0s = np.array([10 ** 19.3, 10 ** 19.4, 10 ** 19.5, 10 ** 19.6, 10 ** 19.7][::-1])
-
+    
     threshd = np.zeros((len(e0s), len(e1s)))
 
     simulation = define_simulation()
@@ -378,24 +254,18 @@ def do_other_tests(a):
                 e0found += 1
     
 
-    np.save(f"thelines{a}", threshd)
-    # for thresh in threshd:
-        # plt.loglog(e1s, thresh)
-    # plt.show()           
-
+    np.save(f"contours{a}", threshd)   
 
 
 def main():
-    # do_tests(on_g=True)
     do_other_tests(56)
     do_other_tests(12)
     do_other_tests(16)
     do_other_tests(28)
     do_other_tests(14)
+    # do_tests(on_g=True)
     # max_len_tests()
-
     return
-
 
 
 if "__main__" == __name__:

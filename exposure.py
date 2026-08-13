@@ -36,7 +36,7 @@ def create_terrestrial_exposure_map(nside, lat, zenithmin, zenithmax):
 
     return map
 
-def create_auger_exposure_map(nside, partial=False, new=False, double=False):
+def create_auger_exposure_map(nside, partial=False, new=False):
     auger_lat = -35.2 * np.pi / 180 # Probably accurate enough, Auger used it in the anisotropy paper
     
     vert_max_angle = 60 * np.pi / 180
@@ -51,16 +51,12 @@ def create_auger_exposure_map(nside, partial=False, new=False, double=False):
         # see "2022 report from the Auger-TA working group on UHECR arrival directions"
         total_exp_auger_km2yrsr_vert = 95700
         total_exp_auger_km2yrsr_hori = 26300
-        # see "The Pierre Auger Observatory: Results and Prospects" (2025)
-        # sum of both = 135000
+
+        # Other values could be relevant too, for example see "The Pierre Auger Observatory: Results and Prospects" (2025)
     
     if partial:
         total_exp_auger_km2yrsr_vert /= 10
         total_exp_auger_km2yrsr_hori /= 10
-
-    if double:
-        total_exp_auger_km2yrsr_vert *= 2
-        total_exp_auger_km2yrsr_hori *= 2
     
     normalized_vert_map = basic_vert_map / np.sum(basic_vert_map) * total_exp_auger_km2yrsr_vert / hp.nside2pixarea(nside) # Pretty sure I'm not wrong about the angular stuff (because we want the map to have units km2yr and not km2yrsr)
     normalized_hori_map = basic_hori_map / np.sum(basic_hori_map) * total_exp_auger_km2yrsr_hori / hp.nside2pixarea(nside) # Pretty sure I'm not wrong about the angular stuff (because we want the map to have units km2yr and not km2yrsr)
@@ -68,9 +64,9 @@ def create_auger_exposure_map(nside, partial=False, new=False, double=False):
     return normalized_vert_map + normalized_hori_map
 
 def create_ta_exposure_map(nside, fake=False):
-    ta_lat = 39.3 * np.pi / 180 # TODO
+    ta_lat = 39.3 * np.pi / 180
     
-    vert_max_angle = 55 * np.pi / 180 # TODO
+    vert_max_angle = 55 * np.pi / 180
     basic_map = create_terrestrial_exposure_map(nside, ta_lat, 0, vert_max_angle)
 
     # see "2022 report from the Auger-TA working group on UHECR arrival directions"
@@ -107,7 +103,7 @@ def create_2022_exposure_map(nside):
     auger = create_auger_exposure_map(nside, new=True)
     return ta + auger
 
-# IMPORTANT note that this function returns an exposure map with units [yr * km^2], NOT [yr * km^2 * sr]! It is assumed that the exposure density is constant inside each pixel
+# IMPORTANT NOTE this function returns an exposure map with units [yr * km^2], NOT [yr * km^2 * sr]! It is assumed that the exposure density is constant inside each pixel
 def create_exposure_map(nside, exp):
     if exp == 'isotropic':
         return create_isotropic_exposure_map(nside)
@@ -121,7 +117,5 @@ def create_exposure_map(nside, exp):
         return create_ideal_exposure_map(nside)
     elif exp == '2022':
         return create_2022_exposure_map(nside)
-    elif exp == 'auger2':
-        return create_auger_exposure_map(nside, new=True, double=True)
     else:
         print("unknown exposure pattern!!")

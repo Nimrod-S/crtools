@@ -3,7 +3,6 @@ import scipy as sp
 import healpy as hp
 import matplotlib.pyplot as plt
 
-import analysis
 from cosmology import *
 
 class DataParser:
@@ -59,9 +58,6 @@ class DataParser:
 
         irb = self._read_file("Photodisintegration/rate_IRB_" + self._irb_name + ".txt")
         irb_lines = irb.splitlines()[3:]
-
-        # sol = self._read_file("Photodisintegration/rate_SolarPhotonField.txt")
-        # sol_lines = sol.splitlines()[3:]
         
         self._pd_rates_gammas = np.logspace(6, 14, 201) # These are the lorentz factor for each rate value in the data
         self._pd_rates_Mpc_cmb = {}
@@ -78,11 +74,6 @@ class DataParser:
             if not self._is_stable(z, n):
                 continue
             self._pd_rates_Mpc_irb[(z, n)] = np.fromiter(entry[2:], float)
-        # for entry in [tuple(l.split()) for l in sol_lines]: # There is definitely a more correct and elegant way of doing this
-        #     z, n = int(entry[0]), int(entry[1])
-        #     if not self._is_stable(z, n):
-        #         continue
-        #     self._pd_rates_Mpc_sol[(z, n)] = np.fromiter(entry[2:], float)
     
     def _load_brs(self):
         cmb = self._read_file("Photodisintegration/branching_CMB.txt")
@@ -189,27 +180,10 @@ class DataParser:
         gammas = self._pd_rates_gammas[relevant_indices]
         mfp_Mpc = 1 / rates_Mpc[relevant_indices]
         e_mfp_Mpc = 1 / e_rates_Mpc[relevant_indices]
-
-        # model_mfp_Mpc = np.array([propagation.mfp1(a, g) for g in gammas])
-
-        # ax = plt.axes()
-        # ax.set_xscale("log")
-        # ax.set_yscale("log")
-        # plt.figure()
         
         plt.title(f"A={a}")
-        # plt.loglog(gammas, mfp_Mpc, label="real", color='royalblue')
-        # plt.loglog(gammas, e_mfp_Mpc, label="real (effective)", color='mediumseagreen')
         plt.loglog(gammas * a * .938e9, e_mfp_Mpc, label=self._irb_name, color=c)
-        # plt.loglog(gammas, model_mfp_Mpc, label="model", color='gray', linestyle='--')
-        # plt.loglog(gammas, e_mfp_Mpc, label=f"A={a}")
-        # plt.loglog(gammas, model_mfp_Mpc, linestyle='--', color='gray')
 
-        # plt.show()
-        # ax = plt.axes()
-        # ax.set_xscale("log")
-        # plt.plot(gammas, e_mfp_Mpc / mfp_Mpc)
-        # plt.show()
 
     def mfp(self, a, g):
         stables = self._get_stable(a)

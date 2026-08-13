@@ -21,7 +21,7 @@ def get_hyperleda_distance_mod(obj_name):
         #fields = line.split()
         #return float(fields[5]) # TODO
 
-        # Dumb and hardcoded but whatever this is important if there are empty fields before the distance
+        # Silly and hardcoded but whatever this is important if there are empty fields before the distance
         try:
             modc = float(line[66:71])
             return modc

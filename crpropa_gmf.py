@@ -17,6 +17,9 @@ STABLE_ISOTOPES = {2: 1, 3: 2, 4: 2, 6: 3, 7: 4, 9: 4, 10: 5, 11: 5, 12: 6, 13: 
 def define_simulation(modelname, modeltype=0, dist=30):
     simulation = ModuleList()
 
+    # IMPORTANT NOTE: 
+    # UF23FieldWrap and KST24FieldWrap are both custom classes that I wrote to wrap the code published for these models. They are not normally available. Substitute with your own implementation.
+
     if modelname == "UF23":
         # model variations (see Tab.2 of UF23 paper)
         # enum ModelType {
@@ -35,17 +38,13 @@ def define_simulation(modelname, modeltype=0, dist=30):
     elif modelname == "KST24":
         gmf = KST24FieldWrap()
     
-    simulation.add(PropagationCK(gmf, 1e-4, 0.1 * parsec, 100 * parsec)) # TODO understand these numbers
+    simulation.add(PropagationCK(gmf, 1e-4, 0.1 * parsec, 100 * parsec))
 
 
     observer = Observer()
     observer.add(ObserverSurface(Sphere(Vector3d(0), dist * kpc)))
-    # observer.add(observerSurface())
-
-    # simulation.add(observer)
     # simulation.add(SphericalBoundary(Vector3d(0, 0, 0), dist * kpc))
     simulation.add(CylindricalBoundary(Vector3d(0, 0, 0), 2 * kpc, 20 * kpc))
-    # Propagation type
 
     return simulation
 
@@ -143,7 +142,6 @@ def fullskycolor(nside, regionname):
     for ang in angs0: th, ph = ang; ths0.append(th); phs0.append(ph)
     hp.mollview(z, cmap="binary")
     hp.projscatter(np.array(ths0).ravel(), np.array(phs0).ravel(), c=colors)
-    print("HELLO")
 
     for model in ["JF12", "KST24", "UF23"]:
         s = define_simulation(model)
@@ -171,14 +169,14 @@ def fullskycolor(nside, regionname):
 
 
 def main():
-    # s = define_simulation("KST24")
-    # r = define_ray(5e18, (np.pi/3, np.pi/2))
-    # a = list(backtrace(s, [r]))[0]
-    # print(a)
+    s = define_simulation("KST24")
+    r = define_ray(5e18, (np.pi/3, np.pi/2))
+    a = list(backtrace(s, [r]))[0]
+    print(a)
 
-    # fullskycolor(64, "ALL")
-    # fullskycolor(64, "1")
-    # fullskycolor(64, "2")
+    fullskycolor(64, "ALL")
+    fullskycolor(64, "1")
+    fullskycolor(64, "2")
 
     return
 

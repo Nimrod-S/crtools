@@ -1,10 +1,8 @@
-import math
 import argparse
 import os
 import tqdm
 import numpy as np
 import scipy as sp
-from scipy.special import exp1
 from matplotlib import pyplot as plt
 import healpy as hp
 
@@ -34,7 +32,7 @@ def load_hitmap(source_model, exposure, source_profile, name, root_path):
 
     for fname in fnames:
         full_path = path + "/" + fname
-        yield np.load(full_path).astype(np.int64) # We are going to start summing and averaging stuff, so back to serious numbers lol
+        yield np.load(full_path).astype(np.int64) # We are going to start summing and averaging stuff, so back to serious numbers
     return
 
 def load_meanmap(source_model, exposure, source_profile, name, root_path):
@@ -63,25 +61,13 @@ def save_result(data, exposure, source_model, source_profile, testname, root_pat
 
     np.save(full_path, data)
 
-# --- MISC ---
-def fancy_smooth(hitmap, e0):
-    r = np.logspace(1, 19.5)
-    rdist = propagation.get_r_dist(e0, r, -2)
-    rdist /= np.sum(rdist) # TODO maybe get_r_dist is already normalized
-    dr = np.gradient(r)
-
-    result = 0
-    for i in range(len(r)):
-        th = gmf.deflection_random(r[i])
-        results += hp.smoothing(hitmap, sigma=th) * rdist[i] * dr[i]
-
 
 # --- MAIN ---
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--source-model", "-s", help="model name for source emission", type=int, default=SOURCE_MODEL)
     parser.add_argument("--nside", "-n", help="nside for the healpix map", default=NSIDE)
-    parser.add_argument("--exposure", "-e", choices=['isotropic', 'auger', 'auger10', 'ta', '2022', 'auger2', 'ideal'], help="sky exposure pattern to use (default: isotropic)", default='isotropic')
+    parser.add_argument("--exposure", "-e", choices=['isotropic', 'auger', 'auger10', 'ta', '2022', 'ideal'], help="sky exposure pattern to use (default: isotropic)", default='isotropic')
     parser.add_argument("--source-density", "-sd", help="log10 source density (Mpc^-3)", type=float, default=-2.0)
     parser.add_argument("--source-evolution", "-se", help="source evolution index", type=float, default=0.0)
     parser.add_argument("--bias", "-b", choices=['iso', 'neutral', 'high'], help="source distribution bias to 2MRS", default='neutral')
@@ -90,7 +76,6 @@ def parse_args():
     parser.add_argument("--gmf", "-g", type=int)
     parser.add_argument("--ecal", "-c", type=int, default=2)
 
-    parser.add_argument("--mask", action="store_true")
     parser.add_argument("--ect", action="store_true")
     parser.add_argument("--mpt", action="store_true")
     parser.add_argument("--mftc", action="store_true")
@@ -105,10 +90,10 @@ def main():
     bratio = {"iso": 0, "neutral": 1, "high": 1.7}[args.bias]
 
     source_profile = (np.power(10, args.source_density), args.source_evolution, bratio)
-    es = np.load(args.input_directory+"/flux/energies_v2.npy")
 
     magname = "" if (args.gmf == -1) else f"_U{args.gmf}"
-    mask = 10 if args.mask else 0
+    calibname = {2: "mid", 1: "low", 3: "high", 0: "all"}[args.ecal]
+    mask = 10
 
     iters_nuc = iter(load_hitmap(args.source_model, args.exposure, source_profile, f"v2"+magname, args.input_directory))
     iters_pro = iter(load_hitmap(0, args.exposure, source_profile, f"v2"+magname, args.input_directory))
@@ -121,8 +106,9 @@ def main():
     if MFTC:
         compare_n = load_meanmap(-2, args.exposure, (1e-2, 0, 1), f"v2", args.input_directory)
         compare_p = load_meanmap(0, args.exposure, (1e-2, 0, 1), f"v2", args.input_directory)
-        mfnuc = analysis.BigMatchedFilterTest(mask, np.sum(compare_n[args.ecal:], axis=0))
-        mfpro = analysis.BigMatchedFilterTest(mask, np.sum(compare_p[args.ecal:], axis=0))
+    
+        mfnuc = analysis.BigMatchedFilterTest(mask, args.nside, np.sum(compare_n[args.ecal:], axis=0))
+        mfpro = analysis.BigMatchedFilterTest(mask, args.nside, np.sum(compare_p[args.ecal:], axis=0))
         
         nuc_vs_nuc = []
         nuc_vs_pro = []
@@ -135,8 +121,7 @@ def main():
         ect_nuc = []
         ect_pro = []
     if MPT:
-        mpt_angle = 16.7
-        mpt = analysis.MultipolesTest(mpt_angle, at)
+        mpt = analysis.MultipolesTest(at)
         
         mpt_nuc = []
         mpt_pro = []
@@ -209,48 +194,40 @@ def main():
         pro_vs_nuc = np.array(pro_vs_nuc)
         pro_vs_pro = np.array(pro_vs_pro)
 
-        txt = {2: "mid", 1: "low", 3: "high"}[args.ecal]
-        save_result(nuc_vs_nuc, args.exposure, args.source_model, source_profile, f"mfsnuc_k{mask}_{txt}"+magname, args.input_directory)
-        save_result(pro_vs_nuc, args.exposure, 0, source_profile, f"mfsnuc_k{mask}_{txt}"+magname, args.input_directory)
+        save_result(nuc_vs_nuc, args.exposure, args.source_model, source_profile, f"mfnuc_k{mask}_{calibname}"+magname, args.input_directory)
+        save_result(pro_vs_nuc, args.exposure, 0, source_profile, f"mfnuc_k{mask}_{calibname}"+magname, args.input_directory)
 
-        save_result(nuc_vs_pro, args.exposure, args.source_model, source_profile, f"mfspro_k{mask}_{txt}"+magname, args.input_directory)
-        save_result(pro_vs_pro, args.exposure, 0, source_profile, f"mfspro_k{mask}_{txt}"+magname, args.input_directory)
+        save_result(nuc_vs_pro, args.exposure, args.source_model, source_profile, f"mfpro_k{mask}_{calibname}"+magname, args.input_directory)
+        save_result(pro_vs_pro, args.exposure, 0, source_profile, f"mfpro_k{mask}_{calibname}"+magname, args.input_directory)
 
     if ECT:
         ect_nuc = np.array(ect_nuc)
         ect_pro = np.array(ect_pro)
 
-        txt = {2: "mid", 1: "low", 3: "high"}[args.ecal]
-
-        save_result(ect_nuc, args.exposure, args.source_model, source_profile, f"ec{ect_angle}_k{mask}_{txt}"+magname, args.input_directory)
-        save_result(ect_pro, args.exposure, 0, source_profile, f"ec{ect_angle}_k{mask}_{txt}"+magname, args.input_directory)
+        save_result(ect_nuc, args.exposure, args.source_model, source_profile, f"ec{ect_angle}_k{mask}_{calibname}"+magname, args.input_directory)
+        save_result(ect_pro, args.exposure, 0, source_profile, f"ec{ect_angle}_k{mask}_{calibname}"+magname, args.input_directory)
 
     if MPT:
-        txt = {2: "mid", 1: "low", 3: "high", 0: "all"}[args.ecal]
-
         mpt_nuc = np.array(mpt_nuc)
         mpt_pro = np.array(mpt_pro)
 
-        save_result(mpt_nuc, args.exposure, args.source_model, source_profile, f"mpd{mpt_angle}_{txt}"+magname, args.input_directory)
-        save_result(mpt_pro, args.exposure, 0, source_profile, f"mpd{mpt_angle}_{txt}"+magname, args.input_directory)
+        save_result(mpt_nuc, args.exposure, args.source_model, source_profile, f"mpd_{calibname}"+magname, args.input_directory)
+        save_result(mpt_pro, args.exposure, 0, source_profile, f"mpd_{calibname}"+magname, args.input_directory)
 
         dst_nuc = np.array(dst_nuc)
         dst_pro = np.array(dst_pro)
 
-        save_result(dst_nuc, args.exposure, args.source_model, source_profile, f"mpd{mpt_angle}_e2e42"+magname, args.input_directory)
-        save_result(dst_pro, args.exposure, 0, source_profile, f"mpd{mpt_angle}_e2e42"+magname, args.input_directory)
+        save_result(dst_nuc, args.exposure, args.source_model, source_profile, f"mpd_e2e42"+magname, args.input_directory)
+        save_result(dst_pro, args.exposure, 0, source_profile, f"mpd_e2e42"+magname, args.input_directory)
 
     if ENT:
         ent_nuc = np.array(ent_nuc)
         ent_pro = np.array(ent_pro)
 
-        txt = {2: "mid", 1: "low", 3: "high", 0: "all"}[args.ecal]
-
-        save_result(ent_nuc, args.exposure, -2, source_profile, f"en3{ent_angle}_k{mask}_{txt}"+magname, args.input_directory)
-        save_result(ent_pro, args.exposure, 0, source_profile, f"en3{ent_angle}_k{mask}_{txt}"+magname, args.input_directory)
-        save_result(ent_nuc_s, args.exposure, -2, source_profile, f"ens3{ent_angle}_k{mask}_{txt}"+magname, args.input_directory)
-        save_result(ent_pro_s, args.exposure, 0, source_profile, f"ens3{ent_angle}_k{mask}_{txt}"+magname, args.input_directory)
-
+        save_result(ent_nuc, args.exposure, -2, source_profile, f"en{ent_angle}_k{mask}_{calibname}"+magname, args.input_directory)
+        save_result(ent_pro, args.exposure, 0, source_profile, f"en{ent_angle}_k{mask}_{calibname}"+magname, args.input_directory)
+        save_result(ent_nuc_s, args.exposure, -2, source_profile, f"ens{ent_angle}_k{mask}_{calibname}"+magname, args.input_directory)
+        save_result(ent_pro_s, args.exposure, 0, source_profile, f"ens{ent_angle}_k{mask}_{calibname}"+magname, args.input_directory)
     
 
 if __name__ == "__main__":

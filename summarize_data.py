@@ -122,8 +122,8 @@ def main():
     mask = 10
     magangle = 16.7
 
-    nuc_signal = np.array([1.74382945, 0.96791687, 0.64973521, 1.06613564, 0.94387794])
-    pro_signal = np.array([1.24254046, 1.12219313, 0.85760198, 1.00403432, 0.90768589])
+    nuc_signal = np.array([0.9302185,  0.30809623, 0.56556634, 1.99914073, 1.26947052])
+    pro_signal = np.array([0.63815697, 0.37719293, 0.75388441, 1.9426459,  1.22234523])
     mft_nuc = analysis.BigMatchedFilterTest(mask, args.nside, signal_vector=nuc_signal)
     mft_pro = analysis.BigMatchedFilterTest(mask, args.nside, signal_vector=pro_signal)
     ent = analysis.SmallScaleVarTest(magangle, args.nside, mask)

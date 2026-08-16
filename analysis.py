@@ -1,7 +1,6 @@
 import numpy as np
 import scipy as sp
 import healpy as hp
-import matplotlib.pyplot as plt
 
 
 def zoa_mask(nside, mlat):

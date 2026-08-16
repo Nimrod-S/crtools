@@ -250,6 +250,10 @@ def fig_largescale():
 
 def get_results_large_vs(args, exp, bias, model, sdens, gmf, mask, calibration):
     magname = "" if (gmf == -1) else f"_U{gmf}"
+    # if model == -2:
+    #     top = get_results(args, f"TESTmfsnuc_k{mask}_{calibration}{magname}", exp, bias, model, sdens)
+    #     bot = get_results(args, f"mfspro_k{mask}_{calibration}{magname}", exp, bias, model, sdens)
+    #     return top - bot
     top = get_results(args, f"mfnuc_k{mask}_{calibration}{magname}", exp, bias, model, sdens)
     bot = get_results(args, f"mfpro_k{mask}_{calibration}{magname}", exp, bias, model, sdens)
     return top - bot
@@ -278,8 +282,8 @@ def fig_large_mag(args, exp):
 
     plt.figure(figsize=(15, 5))
 
-    for dens in [-2, -3, -4]:
-        sp = -1-dens
+    for sp in [1, 2, 3]:
+        dens = {1:-2, 2:-4, 3:-5}[sp]
 
         nuc = get_results_large_vs(args, exp, 1, -2, dens, -1, mask, ecal)
         pro = get_results_large_vs(args, exp, 1, 0, dens, -1, mask, ecal)
@@ -292,19 +296,20 @@ def fig_large_mag(args, exp):
         plt.hist(nuc, density=True, alpha=.25, bins=bns, color='C0', label='nuclei')
         plt.hist(pro, density=True, alpha=.25, bins=bns, color='C3', label='protons')
 
+        print(f"HHs{dens}")
+
         for m in range(8):
             nucm = get_results_large_vs(args, exp, 1, -2, dens, m, mask, ecal)
             prom = get_results_large_vs(args, exp, 1, 0, dens, m, mask, ecal)
-            print(np.sum(nucm < 1e-2) / len(nucm))
+            print(np.sum(nucm < -0.016210843886379056) / len(nucm))
     
             plt.hist(nucm, density=True, bins=bns, color='C0', alpha=1-.1*m, histtype='step', linewidth=2)
             plt.hist(prom, density=True, bins=bns,  color='C3', alpha=1-.1*m, histtype='step', linewidth=2)
 
         if exp == "auger":
-            if mask == 0:
-                value = -0.051473331740622436 - -0.03307751323649544
-            elif mask == 10:
-                value = -0.028861910549725756 - -0.0271730065110904
+            value = 0.1306416531573985 - 0.14685249704377756
+            print(np.sum(nuc < value) / len(nuc))
+            print(np.sum(pro < value) / len(pro))
             plt.vlines(value, 0, 50, color='black', linestyle='--')
 
         if dens == -2:
@@ -324,8 +329,8 @@ def fig_large_cal(args, exp):
 
     plt.figure(figsize=(15, 5))
 
-    for dens in [-2, -3, -4]:
-        sp = -1-dens
+    for sp in [1, 2, 3]:
+        dens = {1:-2, 2:-4, 3:-5}[sp]
 
         nuc = get_results_large_vs(args, exp, 1, -2, dens, gmf, mask, "mid")
         pro = get_results_large_vs(args, exp, 1, 0, dens, gmf, mask, "mid")
@@ -347,10 +352,7 @@ def fig_large_cal(args, exp):
         plt.hist(prolow, density=True, alpha=.6, bins=bns, color='C3', histtype='step', linewidth=2, linestyle=":", label='protons, $E>27.5~$EeV')
 
         if exp == "auger":
-            if mask == 0:
-                value = -0.051473331740622436 - -0.03307751323649544
-            elif mask == 10:
-                value = -0.028861910549725756 - -0.0271730065110904
+            value = 0.1306416531573985 - 0.14685249704377756
             plt.vlines(value, 0, 50, color='black', linestyle='--')
 
         if dens == -2:
@@ -372,8 +374,8 @@ def fig_large_results(args, exp):
 
     plt.figure(figsize=(15, 5))
 
-    for dens in [-2, -3, -4]:
-        sp = -1-dens
+    for sp in [1, 2, 3]:
+        dens = {1:-2, 2:-4, 3:-5}[sp]
 
         nuc = get_results_large_vs(args, exp, 1, -2, dens, gmf, mask, ecal)
         pro = get_results_large_vs(args, exp, 1, 0, dens, gmf, mask, ecal)
@@ -382,7 +384,7 @@ def fig_large_results(args, exp):
         prohigh = get_results_large_vs(args, exp, 1.7, 0, dens, gmf, mask, ecal)
         prolow = get_results_large_vs(args, exp, 0, 0, dens, gmf, mask, ecal)
 
-        bns = np.linspace(min(pro), max(nuchigh))
+        bns = np.linspace(min(prolow), max(nuchigh))
 
         plt.subplot(130+sp)
         plt.title(r"$s_0=10^{"+str(dens)+r"} \text{Mpc}^{-3}$")
@@ -396,16 +398,14 @@ def fig_large_results(args, exp):
         plt.hist(prolow, density=True, alpha=.6, bins=bns, color='C3', histtype='step', linewidth=2, linestyle=":", label='protons, $b_1=0$')
 
         if exp == "auger":
-            if mask == 0:
-                value = -0.051473331740622436 - -0.03307751323649544
-            elif mask == 10:
-                value = -0.028861910549725756 - -0.0271730065110904
+            value = 0.1306416531573985 - 0.14685249704377756
             plt.vlines(value, 0, 50, color='black', linestyle='--')
             x = 0.0012
             print(np.sum(prohigh > value) / len(prohigh))
             print(np.sum(prohigh > x) / len(prohigh))
             print(np.sum(pro < x) / len(pro))
             print((np.mean(prohigh) - np.mean(pro))/np.std(pro))
+            print(np.sum(pro > value) / len(pro))
 
 
         plt.ylabel("p.d.f")
@@ -415,7 +415,7 @@ def fig_large_results(args, exp):
         plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
     
     plt.tight_layout()
-    plt.show()
+    # plt.show()
 
 
 def fig_small_mag(args, exp):
@@ -424,18 +424,17 @@ def fig_small_mag(args, exp):
 
     plt.figure(figsize=(15, 5))
 
-    for dens in [-2, -3, -4]:
-        sp = -1-dens
+    for sp in [1, 2, 3]:
+        dens = {1:-2, 2:-4, 3:-5}[sp]
 
         nuc = get_results_small(args, exp, 1, -2, dens, -1, mask, ecal)
         pro = get_results_small(args, exp, 1, 0, dens, -1, mask, ecal)
 
-        bns = np.linspace(min(nuc), max(pro))
+        bns = np.linspace(max(min(nuc), 8.4), max(pro))
 
         print(f"HHs{dens}")
         print(np.sum(nuc > 8.979925653934787) / len(nuc))
 
-        # plt.subplot(130+sp)
         plt.subplot(130+sp)
         plt.title(r"$s_0=10^{"+str(dens)+r"} \text{Mpc}^{-3}$")
 
@@ -476,8 +475,8 @@ def fig_small_cal(args, exp):
 
     plt.figure(figsize=(15, 5))
 
-    for dens in [-2, -3, -4]:
-        sp = -1-dens
+    for sp in [1, 2, 3]:
+        dens = {1:-2, 2:-4, 3:-5}[sp]
 
         nuc = get_results_small(args, exp, 1, -2, dens, gmf, mask, "mid")
         pro = get_results_small(args, exp, 1, 0, dens, gmf, mask, "mid")
@@ -486,7 +485,7 @@ def fig_small_cal(args, exp):
         prohigh = get_results_small(args, exp, 1, 0, dens, gmf, mask, "high")
         prolow = get_results_small(args, exp, 1, 0, dens, gmf, mask, "low")
 
-        bns = np.linspace(min(nuchigh), max(prolow))
+        bns = np.linspace(max(min(nuchigh), 8.5), max(prolow))
 
         plt.subplot(130+sp)
         plt.title(r"$s_0=10^{"+str(dens)+r"} \text{Mpc}^{-3}$")
@@ -523,8 +522,8 @@ def fig_small_results(args, exp):
 
     plt.figure(figsize=(15, 5))
 
-    for dens in [-2, -3, -4]:
-        sp = -1-dens
+    for sp in [1, 2, 3]:
+        dens = {1:-2, 2:-4, 3:-5}[sp]
 
         nuc = get_results_small(args, exp, 1, -2, dens, gmf, mask, ecal)
         pro = get_results_small(args, exp, 1, 0, dens, gmf, mask, ecal)
@@ -570,13 +569,17 @@ def fig_energy_mag(args, exp):
 
     plt.figure(figsize=(15, 5))
 
-    for dens in [-2, -3, -4]:
-        sp = -1-dens
+    for sp in [1, 2, 3]:
+        dens = {1:-2, 2:-4, 3:-5}[sp]
 
         nuc = get_results_energy(args, exp, 1, -2, dens, -1, mask, ecal)
         pro = get_results_energy(args, exp, 1, 0, dens, -1, mask, ecal)
 
-        bns = np.linspace(min(pro), min([max(nuc), 3e-4]))
+        bns = np.linspace(min(min(pro), min(nuc)), max(nuc))
+        if dens == -4:
+            bns = np.linspace(min(min(pro), min(nuc)), 1.6e-4)
+        if dens == -5:
+            bns = np.linspace(min(min(pro), min(nuc)), 3e-4)
 
         plt.subplot(130+sp)
         plt.title(r"$s_0=10^{"+str(dens)+r"} \text{Mpc}^{-3}$")
@@ -620,8 +623,8 @@ def fig_energy_cal(args, exp):
 
     plt.figure(figsize=(15, 5))
 
-    for dens in [-2, -3, -4]:
-        sp = -1-dens
+    for sp in [1, 2, 3]:
+        dens = {1:-2, 2:-4, 3:-5}[sp]
 
         nuc = get_results_energy(args, exp, 1, -2, dens, gmf, mask, "mid")
         pro = get_results_energy(args, exp, 1, 0, dens, gmf, mask, "mid")
@@ -667,8 +670,8 @@ def fig_energy_results(args, exp):
 
     plt.figure(figsize=(15, 5))
 
-    for dens in [-2, -3, -4]:
-        sp = -1-dens
+    for sp in [1, 2, 3]:
+        dens = {1:-2, 2:-4, 3:-5}[sp]
 
         nuc = get_results_energy(args, exp, 1, -2, dens, gmf, mask, ecal)
         pro = get_results_energy(args, exp, 1, 0, dens, gmf, mask, ecal)
@@ -677,7 +680,7 @@ def fig_energy_results(args, exp):
         prohigh = get_results_energy(args, exp, 1.7, 0, dens, gmf, mask, ecal)
         prolow = get_results_energy(args, exp, 0, 0, dens, gmf, mask, ecal)
 
-        bns = np.linspace(min(prolow), max(nuchigh))
+        bns = np.linspace(min(prolow), min(max(nuchigh), 3e-4))
 
         plt.subplot(130+sp)
         plt.title(r"$s_0=10^{"+str(dens)+r"} \text{Mpc}^{-3}$")
@@ -764,7 +767,7 @@ def fig_dipole_dir_results(args, exp):
 
     for x in range(3):
         for y in range(3):
-            dens = [-2, -3, -4][x]
+            dens = [-2, -4, -5][x]
             model = [-2, -2, 0][y]
             gmf = [0, 6, 0][y] # twistX
             sp = y*3+x+1
@@ -859,12 +862,12 @@ def fig_dipole_direction_p(args):
 
 def fig_dipole_results(args, exp):
     gmf = 0
-    ecal = "e2e42"
+    ecal = "mid"
 
     plt.figure(figsize=(15, 5))
 
-    for dens in [-2, -3, -4]:
-        sp = -1-dens
+    for sp in [1, 2, 3]:
+        dens = {1:-2, 2:-4, 3:-5}[sp]
 
         nuc = [np.linalg.norm(v) for v in get_results_dipole(args, exp, 1, -2, dens, gmf, ecal)]
         pro = [np.linalg.norm(v) for v in get_results_dipole(args, exp, 1, 0, dens, gmf, ecal)]
@@ -873,7 +876,7 @@ def fig_dipole_results(args, exp):
         prohigh = [np.linalg.norm(v) for v in get_results_dipole(args, exp, 1.7, 0, dens, gmf, ecal)]
         prolow = [np.linalg.norm(v) for v in get_results_dipole(args, exp, 0, 0, dens, gmf, ecal)]
 
-        bns = np.linspace(min(pro), max(nuchigh))
+        bns = np.linspace(min(pro), min(max(nuchigh), 2))
 
         plt.subplot(130+sp)
         plt.title(r"$s_0=10^{"+str(dens)+r"} \text{Mpc}^{-3}$")
@@ -910,13 +913,13 @@ def fig_dipole_mag(args, exp):
 
     plt.figure(figsize=(15, 5))
 
-    for dens in [-2, -3, -4]:
-        sp = -1-dens
+    for sp in [1, 2, 3]:
+        dens = {1:-2, 2:-4, 3:-5}[sp]
 
-        nuc = np.array([np.linalg.norm(v, 0) for v in get_results_dipole(args, exp, 1, -2, dens, -1, ecal)])
-        pro = np.array([np.linalg.norm(v, 0) for v in get_results_dipole(args, exp, 1, 0, dens, -1, ecal)])
+        nuc = np.array([np.linalg.norm(v) for v in get_results_dipole(args, exp, 1, -2, dens, -1, ecal)])
+        pro = np.array([np.linalg.norm(v) for v in get_results_dipole(args, exp, 1, 0, dens, -1, ecal)])
 
-        bns = np.linspace(min(pro), min(max(nuc), 1.5))
+        bns = np.linspace(min(min(pro), min(nuc)), min(max(nuc), 1.5))
 
         print(f"HHs{dens}")
 
@@ -930,8 +933,8 @@ def fig_dipole_mag(args, exp):
 
 
         for m in range(8):
-            nucm = np.array([np.linalg.norm(v, 0) for v in get_results_dipole(args, exp, 1, -2, dens, m, ecal)])
-            prom = np.array([np.linalg.norm(v, 0) for v in get_results_dipole(args, exp, 1, 0, dens, m, ecal)])
+            nucm = np.array([np.linalg.norm(v) for v in get_results_dipole(args, exp, 1, -2, dens, m, ecal)])
+            prom = np.array([np.linalg.norm(v) for v in get_results_dipole(args, exp, 1, 0, dens, m, ecal)])
 
             print(np.sum(nucm > np.linalg.norm(np.array([-0.06125621, -0.07736099, -0.0123766]))) / len(nucm))
     
@@ -987,12 +990,11 @@ def main():
     fig_small_mag(args, "auger")        # Fig. 14, 17
     fig_small_cal(args, "auger")        # Fig. 15
 
-
     fig_energy_results(args, "auger")   # Fig. 18
-    fig_energy_mag(args, "auger")       # Fig. 19, 20
+    fig_energy_mag(args, "ideal")       # Fig. 19, 20
     # fig_energy_cal(args, "auger")
 
-    fig_dipole_results(args, "2022")    # Fig. 21, 22
+    fig_dipole_results(args, "auger")   # Fig. 21, 22
     fig_dipole_mag(args, "auger")       # Fig. 23
     fig_dipole_dir_results(args, "auger") # Fig. 24
     fig_dipole_direction_p(args)        # Fig. 25

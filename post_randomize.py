@@ -3,13 +3,10 @@ import os
 import tqdm
 import numpy as np
 import scipy as sp
-from matplotlib import pyplot as plt
 import healpy as hp
 
 import analysis
 import exposure
-import propagation
-import gmf
 from cosmology import *
 
 NSIDE=32

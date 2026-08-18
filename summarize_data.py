@@ -144,6 +144,12 @@ def main():
     d = mt.dipole_semiexp(m)
     print(d, np.linalg.norm(d))
 
+    # ttn = analysis.SmallMatchedFilterTest(mask, args.nside, 4, np.sum(np.load("/mnt/x/uhecr/cr_output/meanmaps/auger/mean_v2_m-2_s-2_b1.npy")[2:], axis=0))
+    # ttp = analysis.SmallMatchedFilterTest(mask, args.nside, 4, np.sum(np.load("/mnt/x/uhecr/cr_output/meanmaps/auger/mean_v2_m0_s-2_b1.npy")[2:], axis=0))
+    # print("SMALL SCALE CORRELATION (w/ nuclei, w/ protons, nuc - pro):")
+    # nn, pp = ttn.test(m), ttp.test(m)
+    # print(nn, pp, nn - pp)
+
     plt.show()
     return
 

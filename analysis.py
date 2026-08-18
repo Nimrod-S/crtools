@@ -10,6 +10,24 @@ def zoa_mask(nside, mlat):
     npix = hp.nside2npix(nside)
     return np.where(in_zoa(np.arange(npix)))
 
+class SmallMatchedFilterTest:
+    def __init__(self, mlat, nsidein, nsideout, signal_map):
+        self._mask = zoa_mask(nsidein, mlat)
+        self._nsideout = nsideout
+
+        signal = signal_map.copy()
+        signal[self._mask] = 0
+        signal = hp.ud_grade(signal_map, nsideout, power=-2)
+        signal /= np.mean(signal)
+        self._logsignal = np.log(np.where(signal, signal, 1))
+
+    def test(self, hitmap):
+        hmap = hitmap.copy()
+        hmap[self._mask] = 0
+        hmap = hp.ud_grade(hitmap, self._nsideout, power=-2)
+
+        return np.dot(hmap, self._logsignal) / hmap.sum()
+
 
 class BigMatchedFilterTest:
     def __init__(self, mlat, nside, signal_map=None, signal_vector=None):

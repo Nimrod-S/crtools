@@ -258,6 +258,16 @@ def get_results_large_vs(args, exp, bias, model, sdens, gmf, mask, calibration):
     bot = get_results(args, f"mfpro_k{mask}_{calibration}{magname}", exp, bias, model, sdens)
     return top - bot
 
+def get_results_small_vs(args, exp, bias, model, sdens, gmf, mask, calibration):
+    magname = "" if (gmf == -1) else f"_U{gmf}"
+    # if model == -2:
+    #     top = get_results(args, f"TESTmfsnuc_k{mask}_{calibration}{magname}", exp, bias, model, sdens)
+    #     bot = get_results(args, f"mfspro_k{mask}_{calibration}{magname}", exp, bias, model, sdens)
+    #     return top - bot
+    top = get_results(args, f"ttnuc_k{mask}_{calibration}{magname}", exp, bias, model, sdens)
+    bot = get_results(args, f"ttpro_k{mask}_{calibration}{magname}", exp, bias, model, sdens)
+    return top - bot
+
 def get_results_small(args, exp, bias, model, sdens, gmf, mask, calibration):
     magname = "" if (gmf == -1) else f"_U{gmf}"
     return get_results(args, f"en16.7_k{mask}_{calibration}{magname}", exp, bias, model, sdens)
@@ -365,6 +375,46 @@ def fig_large_cal(args, exp):
     
     plt.tight_layout()
     plt.show()
+
+def fig_large_cal2(args, exp):
+    mask = 10
+    gmf = -1
+
+    plt.figure(figsize=(15, 5))
+    dens = -4
+    for sp in [1, 2, 3]:
+        # dens = {1:-2, 2:-4, 3:-5}[sp]
+        cal = ["low", "mid", "high"][sp-1]
+
+        pro = get_results_small_vs(args, exp, 1, 0, dens, gmf, mask, cal)
+        prohigh = get_results_small_vs(args, exp, 1.7, 0, dens, gmf, mask, cal)
+        prolow = get_results_small_vs(args, exp, 0, 0, dens, gmf, mask, cal)
+
+        bns = np.linspace(min(min(prohigh), min(prolow)), max(max(prohigh), max(prolow)))
+
+        plt.subplot(130+sp)
+        # plt.title(r"$s_0=10^{"+str(dens)+r"} \text{Mpc}^{-3}$")
+        plt.title(["$E>27.5~$EeV", "$E>32~$EeV", "$E>36.5~$EeV"][sp-1])
+
+        plt.hist(pro, density=True, alpha=.25, bins=bns, color='C3', label='protons, $b_1=1$')
+        plt.hist(prohigh, density=True, alpha=.6, bins=bns, color='C3', histtype='step', linewidth=2, label='protons, $b_1=1.7$')
+        plt.hist(prolow, density=True, alpha=.6, bins=bns, color='C3', histtype='step', linewidth=2, linestyle=":", label='protons, $b_1=0$')
+
+        if exp == "auger":
+            value = -0.039475593896871664 # TEMP
+            plt.vlines(value, 0, 50, color='black', linestyle='--')
+
+        if dens == -2:
+            plt.ylabel("p.d.f")
+        plt.xlabel("$T$")
+        if dens == -4:
+            plt.legend()
+        plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+    
+    plt.tight_layout()
+    plt.show()
+
 
 
 def fig_large_results(args, exp):
@@ -998,6 +1048,8 @@ def main():
     fig_dipole_mag(args, "auger")       # Fig. 23
     fig_dipole_dir_results(args, "auger") # Fig. 24
     fig_dipole_direction_p(args)        # Fig. 25
+
+    fig_large_cal2(args, "auger")       # Fig. 26
 
 if __name__ == "__main__":
     main()

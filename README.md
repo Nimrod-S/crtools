@@ -2,8 +2,7 @@
 A collection of useful tools for simulating ultra-high-energy cosmic ray propagation and analyzing the results.
 
 ## About
-This code was written for and alongside the paper 
-[TODO: add arxiv citation].
+This code was written for and alongside the paper at https://arxiv.org/abs/2608.17801.
 
 It is available for anyone who would like to reproduce our results, use our semi-analytic propagation simulation, or apply our analysis methods to existing UHECR data. If you use any of this code in your research, please cite the aforementioned paper.
 
